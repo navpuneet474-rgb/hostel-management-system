@@ -77,11 +77,21 @@ class NotificationService:
     def __init__(self):
         self.delivery_records: List[NotificationRecord] = []
         self.staff_preferences: Dict[str, NotificationPreference] = {}
-        self._load_default_preferences()
+        self._preferences_loaded = False
+    
+    def _ensure_preferences_loaded(self):
+        """Ensure preferences are loaded (lazy initialization)"""
+        if not self._preferences_loaded:
+            self._load_default_preferences()
+            self._preferences_loaded = True
     
     def _load_default_preferences(self):
         """Load default notification preferences for all staff members"""
-        staff_members = Staff.objects.filter(is_active=True)
+        try:
+            staff_members = Staff.objects.filter(is_active=True)
+        except Exception as e:
+            logger.warning(f"Could not load staff preferences: {e}")
+            return
         
         for staff in staff_members:
             # Set default preferences based on role
@@ -139,6 +149,8 @@ class NotificationService:
         Returns:
             Dict[str, List[DeliveryResult]]: Delivery results by staff ID
         """
+        self._ensure_preferences_loaded()
+        
         if target_staff is None:
             # Get all staff who want daily summaries
             target_staff = [
@@ -215,6 +227,8 @@ class NotificationService:
         Returns:
             Dict[str, List[DeliveryResult]]: Delivery results by staff ID
         """
+        self._ensure_preferences_loaded()
+        
         if target_roles is None:
             # Default roles for urgent alerts
             target_roles = ['warden', 'security', 'admin']
@@ -1046,6 +1060,7 @@ class NotificationService:
     
     def get_staff_preferences(self, staff_id: str) -> Optional[NotificationPreference]:
         """Get notification preferences for a staff member"""
+        self._ensure_preferences_loaded()
         return self.staff_preferences.get(staff_id)
 
 
