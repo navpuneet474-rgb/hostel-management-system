@@ -1,10 +1,17 @@
 import os
 import sys
+from pathlib import Path
 
-# Add the project directory to the sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Build paths
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR))
 
+# Set Django settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hostel_coordination.settings')
+
+# Import Django
+import django
+django.setup()
 
 from django.core.wsgi import get_wsgi_application
 
