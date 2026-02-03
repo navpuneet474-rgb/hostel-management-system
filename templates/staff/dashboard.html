@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Staff Dashboard - {{ staff.name|default:"Staff Member" }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <!-- Header -->
+    <div class="bg-white/80 backdrop-blur-sm border-b border-gray-200 shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <i class="fas fa-building text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Warden/Staff Dashboard</h1>
+                        <p class="text-sm text-gray-500">Welcome back, {{ staff.name|default:"Staff Member" }} • {{ staff.role|title|default:"Staff" }}</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    {% if staff.role in 'warden,admin' %}
+                    <button onclick="openCreateStudentModal()" class="bg-gradient-to-r from-green-500 to-teal-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center space-x-2 font-medium">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Create Student</span>
+                    </button>
+                    {% endif %}
+                    
+                    <a href="{% url 'pass_history' %}" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center space-x-2 font-medium">
+                        <i class="fas fa-history"></i>
+                        <span>Pass History</span>
+                    </a>
+                    
+                    <a href="{% url 'staff_query_interface' %}" class="bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2.5 rounded-xl hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center space-x-2 font-medium">
+                        <i class="fas fa-search"></i>
+                        <span>Query Interface</span>
+                    </a>
+                    
+                    <button id="refresh-btn" class="bg-white text-gray-600 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 hover:shadow-md transition-all duration-200" title="Refresh Dashboard">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    
+                    <!-- User Profile Menu -->
+                    <div class="relative">
+                        <button id="userMenuButton" class="flex items-center space-x-2 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                            <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center shadow">
+                                <i class="fas fa-user text-white"></i>
+                            </div>
+                            <i class="fas fa-chevron-down text-gray-400 text-sm"></i>
+                        </button>
+                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <p class="font-semibold text-gray-800">{{ staff.name|default:"Staff Member" }}</p>
+                                <p class="text-sm text-gray-500">{{ staff.email|default:"staff@example.com" }}</p>
+                            </div>
+                            <a href="/staff/profile/" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <i class="fas fa-user-circle mr-3 text-gray-400"></i>My Profile
+                            </a>
+                            <a href="/auth/change-password/" class="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                                <i class="fas fa-key mr-3 text-gray-400"></i>Change Password
+                            </a>
+                            <hr class="my-2">
+                            <a href="/auth/logout/" class="flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-3"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Statistics Cards - First Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Pending Requests -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-clock text-red-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Pending Requests</p>
+                        <p class="text-2xl font-bold text-gray-800" id="pending-count">{{ stats.total_pending_requests|default:0 }}</p>
+                        <p class="text-xs text-gray-400">Awaiting action</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Present Students -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-check text-green-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Present Students</p>
+                        <p class="text-2xl font-bold text-gray-800" id="present-count">{{ stats.present_students|default:0 }}</p>
+                        <p class="text-xs text-gray-400">In hostel</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Total Students -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-users text-blue-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Total Students</p>
+                        <p class="text-2xl font-bold text-gray-800" id="students-count">{{ stats.total_students|default:0 }}</p>
+                        <p class="text-xs text-gray-400">Registered</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Guests -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-friends text-purple-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Active Guests</p>
+                        <p class="text-2xl font-bold text-gray-800" id="guests-count">{{ stats.active_guests|default:0 }}</p>
+                        <p class="text-xs text-gray-400">Currently visiting</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Cards - Second Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Absent Students -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Absent Students</p>
+                        <p class="text-2xl font-bold text-gray-800" id="absent-count">{{ stats.absent_students|default:0 }}</p>
+                        <p class="text-xs text-gray-400">On leave</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Occupancy Rate -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-percentage text-indigo-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Occupancy Rate</p>
+                        <p class="text-2xl font-bold text-gray-800" id="occupancy-rate">{{ stats.occupancy_rate|default:0 }}%</p>
+                        <p class="text-xs text-gray-400">Room occupancy</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- High Priority Maintenance -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-wrench text-orange-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">High Priority</p>
+                        <p class="text-2xl font-bold text-gray-800" id="high-priority-count">{{ stats.high_priority_maintenance|default:0 }}</p>
+                        <p class="text-xs text-gray-400">Maintenance issues</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Today's Activity -->
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex items-center p-5">
+                    <div class="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-chart-line text-teal-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">Today's Requests</p>
+                        <p class="text-2xl font-bold text-gray-800" id="todays-activity">{{ stats.todays_requests|default:0 }}</p>
+                        <p class="text-xs text-gray-400">New requests</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Pending Requests -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-800">Pending Requests</h2>
+                    </div>
+                    
+                    <!-- Request Tabs -->
+                    <div class="border-b border-gray-200">
+                        <nav class="flex space-x-8 px-6" aria-label="Tabs">
+                            <button class="request-tab py-4 border-b-2 border-blue-500 font-medium text-sm text-blue-600" data-tab="guest">
+                                Guest Requests
+                                <span class="ml-2 bg-blue-100 text-blue-600 py-0.5 px-2 rounded-full text-xs" id="guest-tab-count">0</span>
+                            </button>
+                            <button class="request-tab py-4 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="absence">
+                                Leave Requests
+                                <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs" id="absence-tab-count">0</span>
+                            </button>
+                            <button class="request-tab py-4 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="maintenance">
+                                Maintenance
+                                <span class="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs" id="maintenance-tab-count">0</span>
+                            </button>
+                        </nav>
+                    </div>
+                    
+                    <!-- Request Content -->
+                    <div class="p-6">
+                        <!-- Guest Requests Tab -->
+                        <div id="guest-requests" class="request-content">
+                            <div class="space-y-4" id="guest-requests-list">
+                                <!-- Guest requests will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Absence Requests Tab -->
+                        <div id="absence-requests" class="request-content hidden">
+                            <div class="space-y-4" id="absence-requests-list">
+                                <!-- Absence requests will be loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Maintenance Requests Tab -->
+                        <div id="maintenance-requests" class="request-content hidden">
+                            <div class="space-y-4" id="maintenance-requests-list">
+                                <!-- Maintenance requests will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                
+                <!-- Staff Query Interface -->
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800">Staff Query</h3>
+                    </div>
+                    <div class="p-6">
+                        <form id="staff-query-form">
+                            <div class="mb-4">
+                                <textarea 
+                                    id="query-input" 
+                                    placeholder="Ask about students, rooms, requests..."
+                                    class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                    rows="3"
+                                ></textarea>
+                            </div>
+                            <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 font-medium">
+                                <i class="fas fa-search mr-2"></i>Ask Question
+                            </button>
+                        </form>
+                        
+                        <!-- Query Response -->
+                        <div id="query-response" class="mt-4 hidden">
+                            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                <p class="text-sm text-gray-700" id="query-response-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Daily Summary -->
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800">Daily Summary</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-3" id="daily-summary-content">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-500">Loading summary...</span>
+                                <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800">Recent Activity</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4" id="recent-activity-list">
+                            <!-- Recent activity will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Action Modal -->
+<div id="action-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md mx-4 w-full shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-800" id="modal-title">Confirm Action</h3>
+            <button id="close-modal" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="mb-4">
+            <p class="text-gray-600" id="modal-message">Are you sure you want to perform this action?</p>
+        </div>
+        
+        <div class="mb-4">
+            <label for="action-reason" class="block text-sm font-medium text-gray-700 mb-2">Reason (optional)</label>
+            <textarea 
+                id="action-reason" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+                placeholder="Enter reason for this action..."
+            ></textarea>
+        </div>
+        
+        <div class="flex space-x-3">
+            <button id="cancel-action" class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
+                Cancel
+            </button>
+            <button id="confirm-action" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40 hidden">
+    <div class="bg-white rounded-xl p-6 flex items-center space-x-3 shadow-xl">
+        <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+        <span class="text-gray-700 font-medium">Processing...</span>
+    </div>
+</div>
+
+<!-- Create Student Modal -->
+{% if staff.role in 'warden,admin' %}
+<div id="createStudentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-xl font-bold text-gray-800">Create New Student</h3>
+            <button onclick="closeCreateStudentModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <form id="createStudentForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Student ID</label>
+                <input type="text" id="studentId" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., STU001">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <input type="text" id="studentName" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter student's full name">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <input type="email" id="studentEmail" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="student@example.com">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Room Number</label>
+                    <input type="text" id="roomNumber" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="101">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Block</label>
+                    <input type="text" id="block" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="A">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Phone Number (Optional)</label>
+                <input type="tel" id="phone" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="1234567890">
+            </div>
+            
+            <div id="createStudentError" class="hidden bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="createStudentErrorText"></span>
+            </div>
+            
+            <div id="createStudentSuccess" class="hidden bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span id="createStudentSuccessText"></span>
+            </div>
+            
+            <div class="flex space-x-3 pt-4">
+                <button type="button" onclick="closeCreateStudentModal()" class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors font-medium">
+                    Cancel
+                </button>
+                <button type="submit" id="createStudentBtn" class="flex-1 bg-gradient-to-r from-green-500 to-teal-500 text-white py-3 px-4 rounded-lg hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 font-medium">
+                    <span id="createStudentBtnText">Create Student</span>
+                    <span id="createStudentBtnLoading" class="hidden">
+                        <i class="fas fa-spinner fa-spin mr-2"></i>Creating...
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/staff-dashboard.js' %}"></script>
+{% endblock %}

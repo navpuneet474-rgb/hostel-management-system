@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Profile - Hostel Coordination System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <a href="{% if user.role == 'security' %}/security/dashboard/{% elif user.role == 'maintenance' %}/maintenance/dashboard/{% else %}/staff/{% endif %}" class="text-blue-600 hover:text-blue-700 mr-4">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="bg-blue-100 w-8 h-8 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-user-tie text-blue-600"></i>
+                    </div>
+                    <h1 class="text-xl font-semibold text-gray-800">Staff Profile</h1>
+                </div>
+                <a href="{% if user.role == 'security' %}/security/dashboard/{% elif user.role == 'maintenance' %}/maintenance/dashboard/{% else %}/staff/{% endif %}" class="text-gray-600 hover:text-gray-800">
+                    <i class="fas fa-home mr-2"></i>Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Profile Header -->
+        <div class="bg-white rounded-xl shadow-sm p-8 mb-8">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mr-6">
+                        <i class="fas fa-user-tie text-blue-600 text-3xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">{{ user.name }}</h2>
+                        <p class="text-gray-600">{{ user.get_role_display }} • Staff ID: {{ user.staff_id }}</p>
+                        <p class="text-gray-600">{{ user.email }}</p>
+                    </div>
+                </div>
+                {% if user.role in 'warden,admin' %}
+                <button onclick="openCreateStudentModal()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-user-plus mr-2"></i>Add Student
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Staff Information -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Staff Information</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg text-gray-800">{{ user.name }}</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Staff ID</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg text-gray-800">{{ user.staff_id }}</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg text-gray-800">{{ user.get_role_display }}</div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg text-gray-800">{{ user.email }}</div>
+                        </div>
+                        
+                        {% if user.phone %}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg text-gray-800">{{ user.phone }}</div>
+                        </div>
+                        {% endif %}
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <div class="bg-gray-50 px-4 py-3 rounded-lg">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <i class="fas fa-check-circle mr-1"></i>Active
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6">Account Actions</h3>
+                    <div class="space-y-3">
+                        <a href="/auth/change-password/" class="block bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg p-3 transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-key text-blue-600 mr-3"></i>
+                                <span class="font-medium text-gray-800">Change Password</span>
+                            </div>
+                        </a>
+                        
+                        {% if user.role in 'warden,admin' %}
+                        <a href="/staff/query/" class="block bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg p-3 transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-search text-green-600 mr-3"></i>
+                                <span class="font-medium text-gray-800">Query Interface</span>
+                            </div>
+                        </a>
+                        {% endif %}
+                        
+                        {% if user.role == 'security' %}
+                        <a href="/security/dashboard/" class="block bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg p-3 transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-shield-alt text-red-600 mr-3"></i>
+                                <span class="font-medium text-gray-800">Security Dashboard</span>
+                            </div>
+                        </a>
+                        {% endif %}
+                        
+                        {% if user.role == 'maintenance' %}
+                        <a href="/maintenance/dashboard/" class="block bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-lg p-3 transition-colors">
+                            <div class="flex items-center">
+                                <i class="fas fa-tools text-yellow-600 mr-3"></i>
+                                <span class="font-medium text-gray-800">Maintenance Dashboard</span>
+                            </div>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students List (for Warden/Admin) -->
+            {% if user.role in 'warden,admin' and all_students %}
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800">All Students</h3>
+                        <div class="text-sm text-gray-600">{{ all_students|length }} students</div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                {% for student in all_students %}
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="bg-blue-100 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                                <i class="fas fa-user-graduate text-blue-600"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-900">{{ student.name }}</div>
+                                                <div class="text-sm text-gray-500">{{ student.student_id }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ student.room_number }}</div>
+                                        <div class="text-sm text-gray-500">Block {{ student.block }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">{{ student.email }}</div>
+                                        {% if student.mobile_number %}
+                                        <div class="text-sm text-gray-500">{{ student.mobile_number }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        {% if student.violation_count > 0 %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>{{ student.violation_count }} violation{{ student.violation_count|pluralize }}
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fas fa-check-circle mr-1"></i>Good Standing
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button onclick="openEditStudentModal('{{ student.student_id }}', '{{ student.name }}', '{{ student.email }}', '{{ student.mobile_number|default:'' }}', '{{ student.roll_number|default:'' }}', '{{ student.room_number }}', '{{ student.block }}', '{{ student.phone|default:'' }}')" class="text-blue-600 hover:text-blue-900">
+                                            <i class="fas fa-edit mr-1"></i>Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Create Student Modal -->
+    {% if user.role in 'warden,admin' %}
+    <div id="createStudentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-gray-800">Add New Student</h3>
+                <button onclick="closeCreateStudentModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="createStudentForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Student ID</label>
+                    <input type="text" id="studentId" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., STU001">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="studentName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter student's full name">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input type="email" id="studentEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="student@example.com">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                        <input type="text" id="roomNumber" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="101">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Block</label>
+                        <input type="text" id="block" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="A">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number (Optional)</label>
+                    <input type="tel" id="phone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="1234567890">
+                </div>
+                
+                <div id="createStudentError" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span id="createStudentErrorText"></span>
+                </div>
+                
+                <div id="createStudentSuccess" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span id="createStudentSuccessText"></span>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeCreateStudentModal()" class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="createStudentBtn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                        <span id="createStudentBtnText">Create Student</span>
+                        <span id="createStudentBtnLoading" class="hidden">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Creating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Edit Student Modal -->
+    {% if user.role in 'warden,admin' %}
+    <div id="editStudentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-semibold text-gray-800">Edit Student Profile</h3>
+                <button onclick="closeEditStudentModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="editStudentForm" class="space-y-4">
+                <input type="hidden" id="editStudentId" />
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <input type="text" id="editStudentName" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <input type="email" id="editStudentEmail" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                        <input type="tel" id="editStudentMobile" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Roll Number</label>
+                        <input type="text" id="editStudentRoll" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Room Number</label>
+                        <input type="text" id="editStudentRoom" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Block</label>
+                        <input type="text" id="editStudentBlock" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <input type="tel" id="editStudentPhone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                
+                <div id="editStudentError" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span id="editStudentErrorText"></span>
+                </div>
+                
+                <div id="editStudentSuccess" class="hidden bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span id="editStudentSuccessText"></span>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeEditStudentModal()" class="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="editStudentBtn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                        <span id="editStudentBtnText">Update Student</span>
+                        <span id="editStudentBtnLoading" class="hidden">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Updating...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        {% if user.role in 'warden,admin' %}
+        // Create student modal functions
+        function openCreateStudentModal() {
+            document.getElementById('createStudentModal').classList.remove('hidden');
+        }
+
+        function closeCreateStudentModal() {
+            document.getElementById('createStudentModal').classList.add('hidden');
+            document.getElementById('createStudentForm').reset();
+            hideMessage('createStudentError');
+            hideMessage('createStudentSuccess');
+        }
+
+        // Handle create student form submission
+        document.getElementById('createStudentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                student_id: document.getElementById('studentId').value,
+                name: document.getElementById('studentName').value,
+                email: document.getElementById('studentEmail').value,
+                room_number: document.getElementById('roomNumber').value,
+                block: document.getElementById('block').value,
+                phone: document.getElementById('phone').value
+            };
+            
+            // Show loading state
+            const btn = document.getElementById('createStudentBtn');
+            const btnText = document.getElementById('createStudentBtnText');
+            const btnLoading = document.getElementById('createStudentBtnLoading');
+            
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+            
+            hideMessage('createStudentError');
+            hideMessage('createStudentSuccess');
+            
+            try {
+                const response = await fetch('/staff/create-student/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('createStudentSuccess', result.message);
+                    // Show default password info
+                    setTimeout(() => {
+                        alert(`Student created successfully!\n\nDefault Password: ${result.student.default_password}\n\nPlease share this with the student securely.`);
+                        closeCreateStudentModal();
+                        location.reload(); // Refresh to show new student
+                    }, 1000);
+                } else {
+                    showMessage('createStudentError', result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('createStudentError', 'An error occurred while creating the student account.');
+            } finally {
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        });
+        {% endif %}
+
+        // Edit student modal functions
+        function openEditStudentModal(studentId, name, email, mobile, roll, room, block, phone) {
+            document.getElementById('editStudentId').value = studentId;
+            document.getElementById('editStudentName').value = name;
+            document.getElementById('editStudentEmail').value = email;
+            document.getElementById('editStudentMobile').value = mobile;
+            document.getElementById('editStudentRoll').value = roll;
+            document.getElementById('editStudentRoom').value = room;
+            document.getElementById('editStudentBlock').value = block;
+            document.getElementById('editStudentPhone').value = phone;
+            
+            document.getElementById('editStudentModal').classList.remove('hidden');
+        }
+
+        function closeEditStudentModal() {
+            document.getElementById('editStudentModal').classList.add('hidden');
+            document.getElementById('editStudentForm').reset();
+            hideMessage('editStudentError');
+            hideMessage('editStudentSuccess');
+        }
+
+        // Handle edit student form submission
+        document.getElementById('editStudentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                student_id: document.getElementById('editStudentId').value,
+                name: document.getElementById('editStudentName').value,
+                email: document.getElementById('editStudentEmail').value,
+                mobile_number: document.getElementById('editStudentMobile').value,
+                roll_number: document.getElementById('editStudentRoll').value,
+                room_number: document.getElementById('editStudentRoom').value,
+                block: document.getElementById('editStudentBlock').value,
+                phone: document.getElementById('editStudentPhone').value
+            };
+            
+            // Show loading state
+            const btn = document.getElementById('editStudentBtn');
+            const btnText = document.getElementById('editStudentBtnText');
+            const btnLoading = document.getElementById('editStudentBtnLoading');
+            
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+            
+            hideMessage('editStudentError');
+            hideMessage('editStudentSuccess');
+            
+            try {
+                const response = await fetch('/staff/update-student-profile/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('editStudentSuccess', result.message);
+                    setTimeout(() => {
+                        closeEditStudentModal();
+                        location.reload(); // Refresh to show updated student info
+                    }, 1500);
+                } else {
+                    showMessage('editStudentError', result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('editStudentError', 'An error occurred while updating the student profile.');
+            } finally {
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        });
+
+        // Utility functions
+        function showMessage(elementId, message) {
+            const element = document.getElementById(elementId);
+            const textElement = element.querySelector('span');
+            textElement.textContent = message;
+            element.classList.remove('hidden');
+        }
+
+        function hideMessage(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

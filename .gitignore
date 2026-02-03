@@ -1,0 +1,76 @@
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+.hypothesis/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Logs
+logs/
+*.log
+
+# Node modules (if using frontend tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Sensitive files
+cookies.txt
+*.drawio
+
+# Submission guides (optional - remove if not needed)
+SUBMISSION_GUIDE.md
+GITHUB_SUBMISSION_GUIDE.md
+# Additional exclusions for deployment
+cookies.txt
+*.drawio
+test_email.py
+SUBMISSION_GUIDE.md
+GITHUB_SUBMISSION_GUIDE.md

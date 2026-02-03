@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}AI Hostel Coordination{% endblock %}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'whatsapp-green': '#25D366',
+                        'whatsapp-dark-green': '#128C7E',
+                        'whatsapp-light-green': '#DCF8C6',
+                        'whatsapp-gray': '#F0F0F0',
+                        'whatsapp-dark-gray': '#E5E5E5',
+                        'chat-bg': '#E5DDD5',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-100 font-sans">
+    {% block content %}{% endblock %}
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance Status Update</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 5px 0 0;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .status-in_progress {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .status-completed {
+            background-color: #22c55e;
+            color: white;
+        }
+        .status-cancelled {
+            background-color: #ef4444;
+            color: white;
+        }
+        .content {
+            padding: 30px;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 5px;
+        }
+        .info-grid {
+            display: table;
+            width: 100%;
+        }
+        .info-row {
+            display: table-row;
+        }
+        .info-label {
+            display: table-cell;
+            padding: 8px 0;
+            font-weight: 500;
+            color: #6b7280;
+            width: 140px;
+        }
+        .info-value {
+            display: table-cell;
+            padding: 8px 0;
+            color: #1f2937;
+        }
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .priority-emergency {
+            background-color: #fef2f2;
+            color: #dc2626;
+        }
+        .priority-high {
+            background-color: #fff7ed;
+            color: #ea580c;
+        }
+        .priority-medium {
+            background-color: #fefce8;
+            color: #ca8a04;
+        }
+        .priority-low {
+            background-color: #f0fdf4;
+            color: #16a34a;
+        }
+        .issue-type-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .issue-electrical { background-color: #fef3c7; color: #92400e; }
+        .issue-plumbing { background-color: #dbeafe; color: #1e40af; }
+        .issue-hvac { background-color: #cffafe; color: #0e7490; }
+        .issue-furniture { background-color: #fef3c7; color: #78350f; }
+        .issue-cleaning { background-color: #dcfce7; color: #166534; }
+        .issue-other { background-color: #f3f4f6; color: #4b5563; }
+        .status-change {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .status-arrow {
+            color: #9ca3af;
+            font-size: 20px;
+            margin: 0 10px;
+        }
+        .description-box {
+            background-color: #f9fafb;
+            border-left: 4px solid #f97316;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+        }
+        .notes-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+        }
+        .metrics-box {
+            background-color: #ecfdf5;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .metrics-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #059669;
+        }
+        .metrics-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        .footer {
+            background-color: #f9fafb;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .footer a {
+            color: #f97316;
+            text-decoration: none;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #f97316;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Maintenance Status Update</h1>
+            <p>AI Hostel Coordination System</p>
+            <div class="status-badge status-{{ new_status }}">
+                {% if new_status == 'in_progress' %}
+                    🔧 Work In Progress
+                {% elif new_status == 'completed' %}
+                    ✅ Task Completed
+                {% elif new_status == 'cancelled' %}
+                    ❌ Task Cancelled
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Status Change Summary -->
+            <div class="status-change">
+                <span style="font-weight: 600; color: #6b7280;">{{ old_status|upper }}</span>
+                <span class="status-arrow">→</span>
+                <span style="font-weight: 700; color: #f97316;">{{ new_status|upper }}</span>
+            </div>
+
+            <!-- Task Details Section -->
+            <div class="section">
+                <div class="section-title">Task Details</div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <div class="info-label">Task ID:</div>
+                        <div class="info-value"><code>{{ request_id }}</code></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Room:</div>
+                        <div class="info-value"><strong>{{ room_number }}</strong> (Block {{ block }})</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Issue Type:</div>
+                        <div class="info-value">
+                            <span class="issue-type-badge issue-{{ issue_type }}">{{ issue_type|title }}</span>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Priority:</div>
+                        <div class="info-value">
+                            <span class="priority-badge priority-{{ priority }}">{{ priority|upper }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Information -->
+            <div class="section">
+                <div class="section-title">Student Information</div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <div class="info-label">Name:</div>
+                        <div class="info-value">{{ student_name }}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Student ID:</div>
+                        <div class="info-value">{{ student_id }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Issue Description -->
+            <div class="section">
+                <div class="section-title">Issue Description</div>
+                <div class="description-box">
+                    {{ description }}
+                </div>
+            </div>
+
+            <!-- Staff Notes (if any) -->
+            {% if notes %}
+            <div class="section">
+                <div class="section-title">Staff Notes</div>
+                <div class="notes-box">
+                    {{ notes }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Update Information -->
+            <div class="section">
+                <div class="section-title">Update Information</div>
+                <div class="info-grid">
+                    <div class="info-row">
+                        <div class="info-label">Updated By:</div>
+                        <div class="info-value"><strong>{{ updated_by }}</strong></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Update Time:</div>
+                        <div class="info-value">{{ update_time }}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">Created At:</div>
+                        <div class="info-value">{{ created_at }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resolution Metrics (for completed tasks) -->
+            {% if new_status == 'completed' and resolution_hours %}
+            <div class="metrics-box">
+                <div class="metrics-value">{{ resolution_hours }} hours</div>
+                <div class="metrics-label">Resolution Time</div>
+            </div>
+            {% endif %}
+
+            <!-- Action Button -->
+            <div style="text-align: center;">
+                <a href="{{ dashboard_url }}" class="action-button">View Dashboard</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from the AI Hostel Coordination System.</p>
+            <p>Generated at: {{ generated_at }}</p>
+            <p><a href="{{ dashboard_url }}">Open Staff Dashboard</a></p>
+        </div>
+    </div>
+</body>
+</html>

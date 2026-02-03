@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Leave Request Requires Approval</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .alert-badge {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .details-section {
+            background-color: white;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 15px;
+        }
+        .action-section {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .footer {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>{{ system_name }}</h2>
+        <h3>Leave Request Requires Manual Approval</h3>
+    </div>
+    <div class="content">
+        <div class="alert-badge">
+            ⚠️ A leave request requires your review and approval
+        </div>
+        
+        <div class="details-section">
+            <h4>Student Information</h4>
+            <p><strong>Name:</strong> {{ student_name }}</p>
+            <p><strong>Student ID:</strong> {{ student_id }}</p>
+            <p><strong>Room:</strong> {{ room_number }} - Block {{ block }}</p>
+            <p><strong>Phone:</strong> {{ phone }}</p>
+        </div>
+        
+        <div class="details-section">
+            <h4>Leave Request Details</h4>
+            <p><strong>From:</strong> {{ from_date }}</p>
+            <p><strong>To:</strong> {{ to_date }}</p>
+            <p><strong>Duration:</strong> {{ total_days }} day(s)</p>
+            <p><strong>Reason:</strong> {{ reason }}</p>
+            {% if emergency_contact %}
+            <p><strong>Emergency Contact:</strong> {{ emergency_contact }}</p>
+            {% endif %}
+            <p><strong>Request Submitted:</strong> {{ request_date }}</p>
+        </div>
+        
+        <div class="action-section">
+            <h4>Action Required</h4>
+            <p>This leave request exceeds the auto-approval criteria and requires manual review.</p>
+            <p>Please log in to the staff dashboard to approve or reject this request:</p>
+            <p style="text-align: center;">
+                <a href="{{ dashboard_url }}" class="btn">Open Staff Dashboard</a>
+            </p>
+        </div>
+        
+        <div class="details-section">
+            <h4>Review Guidelines</h4>
+            <ul>
+                <li>Verify the student's reason for leave</li>
+                <li>Check for any recent violations or issues</li>
+                <li>Consider the duration and timing of the request</li>
+                <li>Approve or reject with appropriate reasoning</li>
+                <li>The student will be automatically notified of your decision</li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer">
+        <p>This is an automated notification from the {{ system_name }}.</p>
+        <p>Generated at: {% now "Y-m-d H:i:s" %} UTC</p>
+    </div>
+</body>
+</html>

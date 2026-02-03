@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Query Interface - {{ staff.name|default:"Staff Member" }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-search text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">Staff Query Interface</h1>
+                        <p class="text-sm text-gray-600">Ask questions about hostel data in natural language</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- Dashboard Link -->
+                    <a href="{% url 'staff_dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Query Interface -->
+        <div class="bg-white rounded-lg shadow-lg">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-purple-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">AI Query Assistant</h2>
+                        <p class="text-sm text-gray-600">{{ staff.name|default:"Staff Member" }} - {{ staff.role|title|default:"Staff" }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Query Input -->
+            <div class="p-6 border-b border-gray-200">
+                <form id="query-form" class="space-y-4">
+                    <div>
+                        <label for="query-input" class="block text-sm font-medium text-gray-700 mb-2">
+                            Ask a question about hostel data
+                        </label>
+                        <textarea 
+                            id="query-input" 
+                            placeholder="e.g., How many students are absent today? What is the status of room 101? Show me all pending requests."
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                            rows="3"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="text-sm text-gray-500">
+                            <i class="fas fa-lightbulb mr-1"></i>
+                            Try asking about counts, status, lists, or summaries
+                        </div>
+                        <button 
+                            type="submit" 
+                            id="submit-query"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            <i class="fas fa-search"></i>
+                            <span>Ask Question</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Query History and Results -->
+            <div class="p-6">
+                <div id="query-results" class="space-y-4">
+                    <!-- Welcome Message -->
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-robot text-purple-600"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-medium text-purple-900 mb-2">Welcome to the Staff Query Interface!</h3>
+                                <p class="text-purple-800 text-sm mb-3">
+                                    I can help you get information about the hostel using natural language. Here are some examples:
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                    <div class="bg-white rounded p-2 border border-purple-100">
+                                        <strong>Count Queries:</strong><br>
+                                        • "How many students are absent?"<br>
+                                        • "How many pending requests?"<br>
+                                        • "Count active guests"
+                                    </div>
+                                    <div class="bg-white rounded p-2 border border-purple-100">
+                                        <strong>Status Queries:</strong><br>
+                                        • "Status of room 101"<br>
+                                        • "What is student ABC123 doing?"<br>
+                                        • "Check room 205"
+                                    </div>
+                                    <div class="bg-white rounded p-2 border border-purple-100">
+                                        <strong>List Queries:</strong><br>
+                                        • "Show me pending requests"<br>
+                                        • "List absent students"<br>
+                                        • "All active guests"
+                                    </div>
+                                    <div class="bg-white rounded p-2 border border-purple-100">
+                                        <strong>Summary Queries:</strong><br>
+                                        • "Today's summary"<br>
+                                        • "Daily report"<br>
+                                        • "Give me an overview"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Query Buttons -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button class="quick-query-btn bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg p-4 text-left transition-colors" data-query="How many students are absent today?">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-calendar-times text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-blue-900">Absent Students</h3>
+                        <p class="text-sm text-blue-700">Count today's absences</p>
+                    </div>
+                </div>
+            </button>
+            
+            <button class="quick-query-btn bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg p-4 text-left transition-colors" data-query="Show me all pending requests">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-clock text-green-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-green-900">Pending Requests</h3>
+                        <p class="text-sm text-green-700">View all pending items</p>
+                    </div>
+                </div>
+            </button>
+            
+            <button class="quick-query-btn bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg p-4 text-left transition-colors" data-query="List all active guests">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-user-plus text-purple-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-purple-900">Active Guests</h3>
+                        <p class="text-sm text-purple-700">Current guest list</p>
+                    </div>
+                </div>
+            </button>
+            
+            <button class="quick-query-btn bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg p-4 text-left transition-colors" data-query="Give me today's summary">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-orange-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-orange-900">Daily Summary</h3>
+                        <p class="text-sm text-orange-700">Today's overview</p>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+        <span class="text-gray-700">Processing your query...</span>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/**
+ * Staff Query Interface JavaScript
+ * Handles natural language queries and displays results
+ */
+
+class StaffQueryInterface {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        // Query form submission
+        document.getElementById('query-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.submitQuery();
+        });
+
+        // Quick query buttons
+        document.querySelectorAll('.quick-query-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const query = e.currentTarget.getAttribute('data-query');
+                document.getElementById('query-input').value = query;
+                this.submitQuery();
+            });
+        });
+
+        // Enter key to submit (Ctrl+Enter for new line)
+        document.getElementById('query-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey) {
+                e.preventDefault();
+                this.submitQuery();
+            }
+        });
+    }
+
+    async submitQuery() {
+        const queryInput = document.getElementById('query-input');
+        const query = queryInput.value.trim();
+
+        if (!query) return;
+
+        this.showLoading();
+
+        try {
+            const response = await fetch('/api/staff-query/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': this.getCSRFToken()
+                },
+                body: JSON.stringify({ query })
+            });
+
+            const result = await response.json();
+            this.displayResult(query, result);
+
+        } catch (error) {
+            console.error('Error submitting query:', error);
+            this.displayError(query, 'Network error. Please check your connection and try again.');
+        } finally {
+            this.hideLoading();
+            queryInput.value = '';
+        }
+    }
+
+    displayResult(query, result) {
+        const resultsContainer = document.getElementById('query-results');
+        
+        // Create result element
+        const resultElement = document.createElement('div');
+        resultElement.className = 'border border-gray-200 rounded-lg overflow-hidden';
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const isSuccess = result.success !== false && result.status !== 'error';
+        
+        resultElement.innerHTML = `
+            <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-user text-blue-600"></i>
+                        <span class="font-medium text-gray-900">You asked:</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${timestamp}</span>
+                </div>
+                <p class="text-gray-700 mt-1">${this.escapeHtml(query)}</p>
+            </div>
+            <div class="p-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 ${isSuccess ? 'bg-purple-100' : 'bg-red-100'} rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas ${isSuccess ? 'fa-robot text-purple-600' : 'fa-exclamation-triangle text-red-600'}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="prose prose-sm max-w-none">
+                            <p class="text-gray-800">${this.escapeHtml(result.response || result.error || 'No response received')}</p>
+                        </div>
+                        ${this.formatResults(result.results)}
+                        ${this.formatMetadata(result)}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add to results (prepend to show newest first)
+        resultsContainer.insertBefore(resultElement, resultsContainer.firstChild);
+        
+        // Scroll to the new result
+        resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    displayError(query, errorMessage) {
+        this.displayResult(query, {
+            success: false,
+            error: errorMessage,
+            results: []
+        });
+    }
+
+    formatResults(results) {
+        if (!results || results.length === 0) return '';
+        
+        let html = '<div class="mt-3 bg-gray-50 rounded-lg p-3"><h4 class="font-medium text-gray-900 mb-2">Detailed Results:</h4>';
+        
+        if (Array.isArray(results)) {
+            html += '<div class="space-y-2">';
+            results.forEach((result, index) => {
+                html += `<div class="text-sm bg-white rounded p-2 border border-gray-200">`;
+                
+                // Format based on result type
+                if (result.type) {
+                    html += `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-1">${result.type}</span><br>`;
+                }
+                
+                // Display key-value pairs
+                Object.entries(result).forEach(([key, value]) => {
+                    if (key !== 'type' && value !== null && value !== undefined) {
+                        const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        html += `<strong>${displayKey}:</strong> ${this.escapeHtml(String(value))}<br>`;
+                    }
+                });
+                
+                html += '</div>';
+            });
+            html += '</div>';
+        } else {
+            html += `<pre class="text-sm bg-white rounded p-2 border border-gray-200 overflow-x-auto">${JSON.stringify(results, null, 2)}</pre>`;
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
+    formatMetadata(result) {
+        if (!result.metadata || Object.keys(result.metadata).length === 0) return '';
+        
+        let html = '<div class="mt-2 text-xs text-gray-500">';
+        
+        if (result.query_type) {
+            html += `<span class="inline-block bg-gray-100 text-gray-600 px-2 py-1 rounded mr-2">Type: ${result.query_type}</span>`;
+        }
+        
+        if (result.metadata.timestamp) {
+            const timestamp = new Date(result.metadata.timestamp).toLocaleString();
+            html += `<span class="inline-block bg-gray-100 text-gray-600 px-2 py-1 rounded">Processed: ${timestamp}</span>`;
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    getCSRFToken() {
+        const token = document.querySelector('meta[name="csrf-token"]');
+        return token ? token.getAttribute('content') : '';
+    }
+
+    showLoading() {
+        document.getElementById('loading-overlay').classList.remove('hidden');
+        document.getElementById('submit-query').disabled = true;
+    }
+
+    hideLoading() {
+        document.getElementById('loading-overlay').classList.add('hidden');
+        document.getElementById('submit-query').disabled = false;
+    }
+}
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    new StaffQueryInterface();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Student Dashboard - DEBUG MODE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-attachment: fixed; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .glass-dark { background: rgba(30, 30, 50, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15); }
+        
+        /* Debug panel styling */
+        .debug-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            max-height: 500px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            border-radius: 10px;
+            overflow-y: auto;
+            padding: 15px;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+        
+        .debug-panel h4 {
+            color: #00ffff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00ffff;
+            padding-bottom: 5px;
+        }
+        
+        .debug-panel .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            background: rgba(0, 255, 0, 0.05);
+            border-left: 2px solid #00ff00;
+        }
+        
+        .debug-panel .log-error {
+            color: #ff0000;
+            border-left-color: #ff0000;
+        }
+        
+        .debug-panel .log-warning {
+            color: #ffff00;
+            border-left-color: #ffff00;
+        }
+        
+        .debug-panel .log-info {
+            color: #00ffff;
+            border-left-color: #00ffff;
+        }
+        
+        .debug-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 9998;
+            border: 2px solid #00ff00;
+        }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 10px; }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideInUp 0.6s ease-out; }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-400 { animation-delay: 0.4s; }
+        
+        .status-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .status-approved { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+        .status-pending { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Debug Toggle Button -->
+    <button class="debug-toggle" onclick="toggleDebugPanel()">
+        <i class="fas fa-bug mr-2"></i>DEBUG CONSOLE
+    </button>
+    
+    <!-- Debug Panel -->
+    <div id="debugPanel" class="debug-panel" style="display: none;">
+        <h4><i class="fas fa-terminal mr-2"></i>Live Debug Console</h4>
+        <div id="debugLog"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="glass-dark sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-building text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">Hostel Hub <span class="text-xs text-red-400">[DEBUG MODE]</span></h1>
+                        <p class="text-xs text-purple-200">Student Portal</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-semibold text-white">{{ student.name }}</div>
+                        <div class="text-xs text-purple-200">Room {{ student.room_number }}, Block {{ student.block }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Welcome Section -->
+        <div class="glass rounded-3xl p-8 mb-8 animate-slide-in shadow-2xl">
+            <h2 class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                Debug Dashboard - {{ student.name }}
+            </h2>
+            <p class="text-gray-600">Check the debug console below to see what data is being loaded</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass rounded-2xl p-6 animate-slide-in">
+                <div class="text-sm text-gray-600 mb-1">Total Passes (API)</div>
+                <div class="text-3xl font-bold text-purple-600" id="totalPassesCount">-</div>
+            </div>
+            <div class="glass rounded-2xl p-6 animate-slide-in delay-100">
+                <div class="text-sm text-gray-600 mb-1">Approved Passes</div>
+                <div class="text-3xl font-bold text-green-600" id="approvedPassesCount">-</div>
+            </div>
+            <div class="glass rounded-2xl p-6 animate-slide-in delay-200">
+                <div class="text-sm text-gray-600 mb-1">Pending Requests</div>
+                <div class="text-3xl font-bold text-yellow-600" id="pendingPassesCount">-</div>
+            </div>
+            <div class="glass rounded-2xl p-6 animate-slide-in delay-300">
+                <div class="text-sm text-gray-600 mb-1">Absence Records</div>
+                <div class="text-3xl font-bold text-blue-600" id="absenceRecordsCount">-</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Approved Passes -->
+            <div class="glass rounded-2xl p-6 card-hover animate-slide-in shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-check-circle text-green-600 mr-2"></i>
+                        Approved Passes
+                    </h3>
+                    <button onclick="refreshDigitalPasses()" class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+                <div id="approvedPassesList" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3"></i>
+                        <p class="text-sm text-gray-500">Loading passes...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pending Passes -->
+            <div class="glass rounded-2xl p-6 card-hover animate-slide-in delay-100 shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-clock text-yellow-600 mr-2"></i>
+                        Pending Requests
+                    </h3>
+                    <button onclick="refreshDigitalPasses()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm hover:bg-yellow-600">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+                <div id="pendingPassesList" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3"></i>
+                        <p class="text-sm text-gray-500">Loading requests...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Raw Data Display -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div class="glass rounded-2xl p-6 animate-slide-in delay-200">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-database text-blue-600 mr-2"></i>
+                    Raw Digital Passes Data
+                </h3>
+                <pre id="rawPassesData" class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs font-mono max-h-96 overflow-y-auto">Loading...</pre>
+            </div>
+            
+            <div class="glass rounded-2xl p-6 animate-slide-in delay-300">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-database text-orange-600 mr-2"></i>
+                    Raw Absence Records Data
+                </h3>
+                <pre id="rawAbsenceData" class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs font-mono max-h-96 overflow-y-auto">Loading...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Debug logging system
+        const debugLog = [];
+        let debugPanelVisible = false;
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = { timestamp, message, type };
+            debugLog.push(entry);
+            
+            const logDiv = document.getElementById('debugLog');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logDiv.appendChild(logEntry);
+            
+            // Auto scroll to bottom
+            logDiv.scrollTop = logDiv.scrollHeight;
+            
+            // Also log to console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function toggleDebugPanel() {
+            debugPanelVisible = !debugPanelVisible;
+            document.getElementById('debugPanel').style.display = debugPanelVisible ? 'block' : 'none';
+        }
+
+        // Load digital passes with extensive debugging
+        function loadDigitalPasses() {
+            log('🔄 Starting to load digital passes and absence records...', 'info');
+            
+            Promise.all([
+                fetch('/api/digital-passes/', { credentials: 'include' })
+                    .then(r => {
+                        log(`📥 Digital Passes API responded with status: ${r.status}`, 'info');
+                        return r.json();
+                    }),
+                fetch('/api/absence-records/', { credentials: 'include' })
+                    .then(r => {
+                        log(`📥 Absence Records API responded with status: ${r.status}`, 'info');
+                        return r.json();
+                    })
+            ])
+            .then(([passesData, absenceData]) => {
+                log('=== DIGITAL PASSES RAW DATA ===', 'info');
+                log(JSON.stringify(passesData, null, 2), 'info');
+                
+                log('=== ABSENCE RECORDS RAW DATA ===', 'info');
+                log(JSON.stringify(absenceData, null, 2), 'info');
+                
+                // Display raw data
+                document.getElementById('rawPassesData').textContent = JSON.stringify(passesData, null, 2);
+                document.getElementById('rawAbsenceData').textContent = JSON.stringify(absenceData, null, 2);
+                
+                // Extract data
+                let digitalPasses = [];
+                if (passesData.success && passesData.passes) {
+                    digitalPasses = passesData.passes;
+                    log(`✅ Found ${digitalPasses.length} digital passes in API response`, 'info');
+                } else {
+                    log(`⚠️ Digital passes response format unexpected or empty`, 'warning');
+                    log(`passesData.success: ${passesData.success}`, 'warning');
+                    log(`passesData.passes exists: ${!!passesData.passes}`, 'warning');
+                }
+                
+                let absenceRecords = [];
+                if (Array.isArray(absenceData)) {
+                    absenceRecords = absenceData;
+                    log(`✅ Found ${absenceRecords.length} absence records (array format)`, 'info');
+                } else if (absenceData.results) {
+                    absenceRecords = absenceData.results;
+                    log(`✅ Found ${absenceRecords.length} absence records (results format)`, 'info');
+                } else {
+                    log(`⚠️ Absence records response format unexpected`, 'warning');
+                }
+                
+                // Update counts
+                document.getElementById('totalPassesCount').textContent = digitalPasses.length;
+                document.getElementById('absenceRecordsCount').textContent = absenceRecords.length;
+                
+                // Filter approved passes
+                log('🔍 Filtering approved passes...', 'info');
+                const approvedPasses = digitalPasses.filter(p => {
+                    const isActive = p.status === 'active';
+                    const isValid = p.is_valid;
+                    log(`Pass ${p.pass_number}: status=${p.status}, is_valid=${p.is_valid}, matches=${isActive && isValid}`, 'info');
+                    return isActive && isValid;
+                });
+                log(`✅ Approved passes after filtering: ${approvedPasses.length}`, 'info');
+                document.getElementById('approvedPassesCount').textContent = approvedPasses.length;
+                
+                // Filter pending requests
+                log('🔍 Filtering pending absence records...', 'info');
+                const pendingAbsences = absenceRecords.filter(r => {
+                    const isPending = r.status === 'pending';
+                    log(`Absence ${r.absence_id}: status=${r.status}, matches=${isPending}`, 'info');
+                    return isPending;
+                });
+                log(`✅ Pending requests after filtering: ${pendingAbsences.length}`, 'info');
+                document.getElementById('pendingPassesCount').textContent = pendingAbsences.length;
+                
+                // Display
+                displayApprovedPasses(approvedPasses);
+                displayPendingPasses(pendingAbsences);
+                
+                log('✅ Data loading complete!', 'info');
+            })
+            .catch(error => {
+                log(`❌ ERROR loading data: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+                console.error('Full error:', error);
+                
+                document.getElementById('approvedPassesList').innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                document.getElementById('pendingPassesList').innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            });
+        }
+
+        function displayApprovedPasses(passes) {
+            const container = document.getElementById('approvedPassesList');
+            
+            if (!passes || passes.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                        <p class="font-bold">No Approved Passes Found</p>
+                        <p class="text-sm mt-1">If you just submitted a ≤2 day leave request, check:</p>
+                        <ul class="text-sm mt-2 ml-4 list-disc">
+                            <li>Was the request actually saved to database?</li>
+                            <li>Check the Raw Data sections below</li>
+                            <li>Look at the Debug Console</li>
+                        </ul>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = passes.map(pass => `
+                <div class="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="font-mono font-bold text-green-800">${pass.pass_number}</div>
+                            <div class="text-xs text-green-600 mt-1">${formatDate(pass.from_date)} - ${formatDate(pass.to_date)}</div>
+                            <div class="text-xs text-gray-600 mt-1">Total Days: ${pass.total_days}</div>
+                        </div>
+                        <span class="status-badge status-approved">
+                            <i class="fas fa-check-circle mr-1"></i>Active
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-600 mt-2">
+                        <strong>Status:</strong> ${pass.status} | 
+                        <strong>Valid:</strong> ${pass.is_valid ? 'Yes' : 'No'}
+                    </div>
+                    <div class="flex space-x-2 mt-3">
+                        <button onclick="viewPass('${pass.pass_number}')" class="flex-1 bg-green-500 text-white py-2 px-3 rounded-lg text-xs font-semibold">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </button>
+                        <button onclick="downloadPassFromList('${pass.pass_number}')" class="flex-1 bg-green-500 text-white py-2 px-3 rounded-lg text-xs font-semibold">
+                            <i class="fas fa-download mr-1"></i>Download
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function displayPendingPasses(records) {
+            const container = document.getElementById('pendingPassesList');
+            
+            if (!records || records.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+                        <p class="font-bold">No Pending Requests Found</p>
+                        <p class="text-sm mt-1">If you submitted a >2 day leave request, it should appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = records.map(record => `
+                <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="font-semibold text-yellow-800">Leave Request</div>
+                            <div class="text-xs text-yellow-600 mt-1">${formatDate(record.start_date)} - ${formatDate(record.end_date)}</div>
+                        </div>
+                        <span class="status-badge status-pending">
+                            <i class="fas fa-clock mr-1"></i>Pending
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-700 mt-2">
+                        ${record.reason ? record.reason.substring(0, 80) + '...' : 'No reason'}
+                    </div>
+                    <div class="text-xs text-gray-600 mt-2">
+                        <strong>Status:</strong> ${record.status}
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function refreshDigitalPasses() {
+            log('🔄 Manual refresh triggered', 'info');
+            document.getElementById('approvedPassesList').innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-purple-400"></i></div>';
+            document.getElementById('pendingPassesList').innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-purple-400"></i></div>';
+            loadDigitalPasses();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function viewPass(passNumber) {
+            window.open(`/api/pass/${passNumber}/view/`, '_blank');
+        }
+
+        function downloadPassFromList(passNumber) {
+            window.open(`/api/pass/${passNumber}/download/`, '_blank');
+        }
+
+        function getCookie(name) {
+            const token = document.querySelector('meta[name="csrf-token"]');
+            if (token && name === 'csrftoken') {
+                return token.getAttribute('content');
+            }
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Dashboard initialized - DEBUG MODE', 'info');
+            log(`Student: {{ student.name }}`, 'info');
+            log(`Room: {{ student.room_number }}, Block {{ student.block }}`, 'info');
+            loadDigitalPasses();
+        });
+    </script>
+</body>
+</html>

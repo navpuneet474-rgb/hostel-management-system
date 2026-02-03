@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Student Dashboard - Hostel Coordination System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+        
+        /* Glassmorphism effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .glass-dark {
+            background: rgba(30, 30, 50, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Animated gradient background */
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .animated-gradient {
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        
+        /* Card hover effects */
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+        }
+        
+        /* Pulse animation */
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .pulse-soft {
+            animation: pulse-soft 2s ease-in-out infinite;
+        }
+        
+        /* Slide in animation */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-slide-in {
+            animation: slideInUp 0.6s ease-out;
+        }
+        
+        /* Stagger animation delays */
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-400 { animation-delay: 0.4s; }
+        
+        /* Status badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-approved {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+        
+        .status-pending {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+        
+        /* Quick action buttons */
+        .quick-action {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quick-action::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        
+        .quick-action:hover::before {
+            left: 100%;
+        }
+        
+        /* Modal backdrop */
+        .modal-backdrop {
+            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Pass card design */
+        .pass-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .pass-card-pending {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 10px 30px rgba(240, 147, 251, 0.4);
+        }
+        
+        /* Number counter animation */
+        @keyframes countUp {
+            from { opacity: 0; transform: scale(0.5); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .count-up {
+            animation: countUp 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Navigation with glassmorphism -->
+    <nav class="glass-dark sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo and Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-lg">
+                        <i class="fas fa-building text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white">Hostel Hub</h1>
+                        <p class="text-xs text-purple-200">Student Portal</p>
+                    </div>
+                </div>
+
+                <!-- User Menu -->
+                <div class="flex items-center space-x-4">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-sm font-semibold text-white">{{ student.name }}</div>
+                        <div class="text-xs text-purple-200">Room {{ student.room_number }}, Block {{ student.block }}</div>
+                    </div>
+                    <div class="relative">
+                        <button id="userMenuButton" class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white hover:shadow-lg transition-all">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <div id="userMenu" class="hidden absolute right-0 mt-3 w-56 glass rounded-2xl shadow-xl border border-white/20 overflow-hidden z-50">
+                            <div class="p-3 bg-gradient-to-r from-purple-500 to-pink-500">
+                                <div class="text-white font-semibold text-sm">{{ student.name }}</div>
+                                <div class="text-white/80 text-xs">{{ student.email }}</div>
+                            </div>
+                            <a href="/student/profile/" class="block px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 transition-colors">
+                                <i class="fas fa-user-circle mr-3 text-purple-500"></i>My Profile
+                            </a>
+                            <a href="/auth/change-password/" class="block px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 transition-colors">
+                                <i class="fas fa-key mr-3 text-purple-500"></i>Change Password
+                            </a>
+                            <hr class="border-gray-200">
+                            <a href="/auth/logout/" class="block px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                <i class="fas fa-sign-out-alt mr-3"></i>Logout
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Welcome Hero Section -->
+        <div class="glass rounded-3xl p-8 mb-8 overflow-hidden relative animate-slide-in shadow-2xl">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
+            <div class="relative z-10">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                            Welcome back, {{ student.name }}!
+                        </h2>
+                        {% comment %} <p class="text-gray-600 text-lg">Here's your hostel dashboard overview</p> {% endcomment %}
+                        <div class="flex items-center space-x-6 mt-4">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-door-open text-purple-500"></i>
+                                <span class="text-sm text-gray-600">Room {{ student.room_number }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-building text-purple-500"></i>
+                                <span class="text-sm text-gray-600">Block {{ student.block }}</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-id-card text-purple-500"></i>
+                                <span class="text-sm text-gray-600 font-mono">{{ student.student_id }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block">
+                        <div class="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center shadow-lg">
+                            <i class="fas fa-user-graduate text-white text-4xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <a href="/chat/" class="glass rounded-2xl p-6 card-hover quick-action group animate-slide-in shadow-lg">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-comments text-white text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">AI Chat</h3>
+                <p class="text-xs text-gray-600">Get instant help</p>
+            </a>
+            
+            <button onclick="openLeaveRequestModal()" class="glass rounded-2xl p-6 card-hover quick-action group animate-slide-in delay-100 shadow-lg text-left">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-calendar-alt text-white text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">Leave Request</h3>
+                <p class="text-xs text-gray-600">Apply for leave</p>
+            </button>
+            
+            <a href="/student/profile/" class="glass rounded-2xl p-6 card-hover quick-action group animate-slide-in delay-200 shadow-lg">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-user-circle text-white text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">My Profile</h3>
+                <p class="text-xs text-gray-600">View details</p>
+            </a>
+            
+            <button onclick="openMaintenanceRequestModal()" class="glass rounded-2xl p-6 card-hover quick-action group animate-slide-in delay-300 shadow-lg text-left">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-red-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-tools text-white text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">Maintenance</h3>
+                <p class="text-xs text-gray-600">Report issues</p>
+            </button>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Guest Requests -->
+            <div class="glass rounded-2xl p-6 card-hover animate-slide-in shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                            <i class="fas fa-user-friends text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">Guest Requests</h3>
+                    </div>
+                    <button onclick="openGuestRequestModal()" class="w-8 h-8 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors">
+                        <i class="fas fa-plus text-sm"></i>
+                    </button>
+                </div>
+                <div id="guestRequestsList" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3 pulse-soft"></i>
+                        <p class="text-sm text-gray-500">Loading requests...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance Requests -->
+            <div class="glass rounded-2xl p-6 card-hover animate-slide-in delay-100 shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                            <i class="fas fa-wrench text-orange-600"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">Maintenance</h3>
+                    </div>
+                    <button onclick="openMaintenanceRequestModal()" class="w-8 h-8 rounded-lg bg-orange-500 hover:bg-orange-600 text-white flex items-center justify-center transition-colors">
+                        <i class="fas fa-plus text-sm"></i>
+                    </button>
+                </div>
+                <div id="maintenanceRequestsList" class="space-y-3 max-h-96 overflow-y-auto">
+                    <div class="text-center py-12">
+                        <i class="fas fa-spinner fa-spin text-3xl text-purple-400 mb-3 pulse-soft"></i>
+                        <p class="text-sm text-gray-500">Loading requests...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Digital Passes Column -->
+            <div class="space-y-6">
+                <!-- Approved Passes -->
+                <div class="glass rounded-2xl p-6 card-hover animate-slide-in delay-200 shadow-lg">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                                <i class="fas fa-check-circle text-green-600"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-800">Approved Passes</h3>
+                        </div>
+                        <button onclick="refreshDigitalPasses()" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors">
+                            <i class="fas fa-sync-alt text-sm"></i>
+                        </button>
+                    </div>
+                    <div id="approvedPassesList" class="space-y-3 max-h-64 overflow-y-auto">
+                        <div class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-2xl text-purple-400 mb-2 pulse-soft"></i>
+                            <p class="text-xs text-gray-500">Loading passes...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Passes -->
+                <div class="glass rounded-2xl p-6 card-hover animate-slide-in delay-300 shadow-lg">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 flex items-center justify-center">
+                                <i class="fas fa-clock text-yellow-600"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-800">Pending Passes</h3>
+                        </div>
+                    </div>
+                    <div id="pendingPassesList" class="space-y-3 max-h-64 overflow-y-auto">
+                        <div class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-2xl text-purple-400 mb-2 pulse-soft"></i>
+                            <p class="text-xs text-gray-500">Loading requests...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <!-- Student Info Card -->
+            <div class="glass rounded-2xl p-6 card-hover animate-slide-in delay-400 shadow-lg">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-info-circle text-purple-500 mr-2"></i>
+                    Student Information
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Student ID</span>
+                        <span class="font-mono font-semibold text-gray-800">{{ student.student_id }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Room</span>
+                        <span class="font-semibold text-gray-800">{{ student.room_number }}, Block {{ student.block }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Email</span>
+                        <span class="font-semibold text-gray-800 text-sm">{{ student.email }}</span>
+                    </div>
+                    {% if student.mobile_number %}
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-sm text-gray-600">Mobile</span>
+                        <span class="font-semibold text-gray-800">{{ student.mobile_number }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="glass rounded-2xl p-6 relative overflow-hidden animate-slide-in delay-400 shadow-lg">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-2xl"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center space-x-3 mb-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">Need Help</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                        Our AI assistant is available 24/7 to help you with requests, questions, and hostel information.
+                    </p>
+                    <a href="/chat/" class="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all">
+                        <i class="fas fa-comments"></i>
+                        <span>Start Chat</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leave Request Modal -->
+    <div id="leaveRequestModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-3xl shadow-2xl w-full max-w-md p-8 animate-slide-in">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Leave Request</h3>
+                <button onclick="closeLeaveRequestModal()" class="w-10 h-10 rounded-full hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="leaveRequestForm" class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">From Date</label>
+                        <input type="date" id="fromDate" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">To Date</label>
+                        <input type="date" id="toDate" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Total Days</label>
+                    <input type="number" id="totalDays" readonly class="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 font-bold text-purple-600">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Reason</label>
+                    <textarea id="reason" required rows="4" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none" placeholder="Please provide a detailed reason for your leave..."></textarea>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeLeaveRequestModal()" class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all">
+                        Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Digital Pass Modal -->
+    <div id="digitalPassModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-3xl shadow-2xl w-full max-w-lg p-8 animate-slide-in">
+            <div class="text-center mb-6">
+                <div class="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="fas fa-check-circle text-white text-3xl"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800">Leave Approved!</h3>
+                <p class="text-gray-600 mt-2" id="approvalMessage">Your digital pass has been generated</p>
+            </div>
+            
+            <!-- Digital Pass Display -->
+            <div class="pass-card p-6 mb-6 text-white">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h4 class="font-bold text-lg">Digital Leave Pass</h4>
+                        <p class="text-white/80 text-sm">{{ student.name }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-white/80 text-xs mb-1">Pass Number</p>
+                        <p class="font-mono font-bold text-lg" id="passNumber">-</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 text-sm mb-6">
+                    <div class="bg-white/10 rounded-xl p-3 backdrop-blur">
+                        <p class="text-white/70 text-xs mb-1">From Date</p>
+                        <p class="font-semibold" id="passFromDate">-</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-3 backdrop-blur">
+                        <p class="text-white/70 text-xs mb-1">To Date</p>
+                        <p class="font-semibold" id="passToDate">-</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-3 backdrop-blur">
+                        <p class="text-white/70 text-xs mb-1">Total Days</p>
+                        <p class="font-semibold" id="passTotalDays">-</p>
+                    </div>
+                    <div class="bg-white/10 rounded-xl p-3 backdrop-blur">
+                        <p class="text-white/70 text-xs mb-1">Verification Code</p>
+                        <p class="font-mono font-semibold" id="verificationCode">-</p>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-white/20">
+                    <p class="text-white/70 text-xs mb-1">Student Details</p>
+                    <p class="text-sm font-mono">{{ student.student_id }} • Room {{ student.room_number }}, Block {{ student.block }}</p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button onclick="downloadPass()" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all">
+                    <i class="fas fa-download mr-2"></i>Download PDF
+                </button>
+                <button onclick="closeDigitalPassModal()" class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest Request Modal -->
+    <div id="guestRequestModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-3xl shadow-2xl w-full max-w-md p-8 animate-slide-in">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Guest Request</h3>
+                <button onclick="closeGuestRequestModal()" class="w-10 h-10 rounded-full hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="guestRequestForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Guest Name</label>
+                    <input type="text" id="guestName" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" placeholder="Enter guest's full name">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Relationship</label>
+                    <select id="guestRelationship" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        <option value="">Select relationship...</option>
+                        <option value="parent">Parent</option>
+                        <option value="sibling">Sibling</option>
+                        <option value="relative">Relative</option>
+                        <option value="guardian">Guardian</option>
+                        <option value="friend">Friend</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Guest Phone No</label>
+                    <input type="tel" id="guestPhone" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all" placeholder="Enter guest's phone number">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Arrival</label>
+                        <input type="datetime-local" id="guestStartDate" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Departure</label>
+                        <input type="datetime-local" id="guestEndDate" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Purpose of Visit</label>
+                    <textarea id="guestPurpose" rows="3" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none" placeholder="Briefly describe the purpose of visit..."></textarea>
+                </div>
+
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeGuestRequestModal()" class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all">
+                        Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Maintenance Request Modal -->
+    <div id="maintenanceRequestModal" class="hidden fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-3xl shadow-2xl w-full max-w-md p-8 animate-slide-in">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800">Maintenance Request</h3>
+                <button onclick="closeMaintenanceRequestModal()" class="w-10 h-10 rounded-full hover:bg-gray-100 text-gray-600 flex items-center justify-center transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="maintenanceRequestForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Issue Type</label>
+                    <select id="issueType" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        <option value="">Select issue type</option>
+                        <option value="electrical">⚡ Electrical</option>
+                        <option value="plumbing">🚰 Plumbing</option>
+                        <option value="hvac">❄️ HVAC/Air Conditioning</option>
+                        <option value="furniture">🪑 Furniture</option>
+                        <option value="cleaning">🧹 Cleaning</option>
+                        <option value="other">🔧 Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
+                    <select id="maintenancePriority" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all">
+                        <option value="low">🟢 Low</option>
+                        <option value="medium" selected>🟡 Medium</option>
+                        <option value="high">🟠 High</option>
+                        <option value="emergency">🔴 Emergency</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Issue Description</label>
+                    <textarea id="maintenanceDescription" rows="4" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none" placeholder="Describe the maintenance issue in detail..."></textarea>
+                </div>
+
+                <div class="flex space-x-3 pt-4">
+                    <button type="button" onclick="closeMaintenanceRequestModal()" class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 px-4 rounded-xl font-semibold hover:shadow-lg transition-all">
+                        Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // User menu toggle
+        document.getElementById('userMenuButton').addEventListener('click', function() {
+            const menu = document.getElementById('userMenu');
+            menu.classList.toggle('hidden');
+        });
+
+        // Close user menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const button = document.getElementById('userMenuButton');
+            const menu = document.getElementById('userMenu');
+            
+            if (!button.contains(event.target) && !menu.contains(event.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        // Leave request modal functions
+        function openLeaveRequestModal() {
+            document.getElementById('leaveRequestModal').classList.remove('hidden');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fromDate').min = today;
+            document.getElementById('toDate').min = today;
+        }
+
+        function closeLeaveRequestModal() {
+            document.getElementById('leaveRequestModal').classList.add('hidden');
+            document.getElementById('leaveRequestForm').reset();
+        }
+
+        // Calculate total days
+        function calculateDays() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            
+            if (fromDate && toDate) {
+                const from = new Date(fromDate);
+                const to = new Date(toDate);
+                const diffTime = Math.abs(to - from);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                document.getElementById('totalDays').value = diffDays;
+            }
+        }
+
+        document.getElementById('fromDate').addEventListener('change', function() {
+            const fromDate = this.value;
+            document.getElementById('toDate').min = fromDate;
+            calculateDays();
+        });
+
+        document.getElementById('toDate').addEventListener('change', calculateDays);
+
+        // Handle leave request form submission
+        document.getElementById('leaveRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            const totalDays = document.getElementById('totalDays').value;
+            const reason = document.getElementById('reason').value;
+            
+            if (!fromDate || !toDate || !reason) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            submitButton.disabled = true;
+            
+            fetch('/api/submit-leave-request/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    from_date: fromDate,
+                    to_date: toDate,
+                    reason: reason
+                })
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/auth/login/';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+                if (data.success) {
+                    closeLeaveRequestModal();
+                    
+                    if (data.auto_approved && data.digital_pass) {
+                        showDigitalPassModal(data.digital_pass, data.message);
+                    } else if (data.requires_warden_approval) {
+                        alert(`${data.message}\n\nYour request has been sent to the warden for approval. You will be notified once a decision is made.`);
+                    } else {
+                        alert(`${data.message}`);
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting the request.');
+            })
+            .finally(() => {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
+        });
+
+        // Digital pass modal functions
+        function showDigitalPassModal(digitalPass, message) {
+            document.getElementById('digitalPassModal').classList.remove('hidden');
+            document.getElementById('approvalMessage').textContent = message;
+            document.getElementById('passNumber').textContent = digitalPass.pass_number;
+            document.getElementById('passFromDate').textContent = formatDate(digitalPass.from_date);
+            document.getElementById('passToDate').textContent = formatDate(digitalPass.to_date);
+            document.getElementById('passTotalDays').textContent = digitalPass.total_days;
+            document.getElementById('verificationCode').textContent = digitalPass.verification_code;
+        }
+
+        function closeDigitalPassModal() {
+            document.getElementById('digitalPassModal').classList.add('hidden');
+        }
+
+        function downloadPass() {
+            const passNumber = document.getElementById('passNumber').textContent;
+            if (passNumber && passNumber !== '-') {
+                window.open(`/api/pass/${passNumber}/download/`, '_blank');
+            } else {
+                alert('Pass number not available');
+            }
+        }
+
+        function viewPass(passNumber) {
+            window.open(`/api/pass/${passNumber}/view/`, '_blank');
+        }
+
+        function downloadPassFromList(passNumber) {
+            window.open(`/api/pass/${passNumber}/download/`, '_blank');
+        }
+
+        // Load digital passes
+        function loadDigitalPasses() {
+            console.log('Loading digital passes...');
+            
+            Promise.all([
+                fetch('/api/digital-passes/', { credentials: 'include' }).then(r => r.json()),
+                fetch('/api/absence-records/', { credentials: 'include' }).then(r => r.json())
+            ])
+            .then(([passesData, absenceData]) => {
+                let absenceRecords = [];
+                if (Array.isArray(absenceData)) {
+                    absenceRecords = absenceData;
+                } else if (absenceData.results) {
+                    absenceRecords = absenceData.results;
+                }
+                
+                let digitalPasses = passesData.success ? passesData.passes : [];
+                
+                // Show all approved passes (both active and inactive)
+                const approvedPasses = digitalPasses;
+                const pendingAbsences = absenceRecords.filter(r => r.status === 'pending');
+                
+                displayApprovedPasses(approvedPasses);
+                displayPendingPasses(pendingAbsences);
+            })
+            .catch(error => {
+                console.error('Error loading passes:', error);
+                document.getElementById('approvedPassesList').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-2xl text-red-400 mb-2"></i>
+                        <p class="text-xs text-gray-500">Failed to load passes</p>
+                    </div>
+                `;
+                document.getElementById('pendingPassesList').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-2xl text-red-400 mb-2"></i>
+                        <p class="text-xs text-gray-500">Failed to load passes</p>
+                    </div>
+                `;
+            });
+        }
+
+        function displayApprovedPasses(passes) {
+            const approvedContainer = document.getElementById('approvedPassesList');
+            
+            if (!passes || passes.length === 0) {
+                approvedContainer.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No approved passes yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const approvedHtml = passes.slice(0, 3).map(pass => {
+                const isActive = pass.status === 'active' && pass.is_valid;
+                const statusBadge = isActive 
+                    ? `<span class="status-badge status-approved"><i class="fas fa-check-circle mr-1"></i>Active</span>`
+                    : `<span class="status-badge" style="background-color: #fee2e2; color: #991b1b;"><i class="fas fa-times-circle mr-1"></i>Inactive</span>`;
+                return `
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 card-hover">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <div class="font-mono font-bold text-green-800 text-sm mb-1">${pass.pass_number}</div>
+                                <div class="text-xs text-green-600">${formatDate(pass.from_date)} - ${formatDate(pass.to_date)}</div>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="viewPass('${pass.pass_number}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </button>
+                            <button onclick="downloadPassFromList('${pass.pass_number}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-xs font-semibold transition-colors">
+                                <i class="fas fa-download mr-1"></i>Download
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            approvedContainer.innerHTML = approvedHtml;
+        }
+
+        function displayPendingPasses(records) {
+            const container = document.getElementById('pendingPassesList');
+            
+            if (!records || records.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No pending requests</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const recordsHtml = records.slice(0, 3).map(record => {
+                return `
+                    <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-4 card-hover">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <div class="font-semibold text-yellow-800 text-sm mb-1">Leave Request</div>
+                                <div class="text-xs text-yellow-600">${formatDate(record.start_date)} - ${formatDate(record.end_date)}</div>
+                            </div>
+                            <span class="status-badge status-pending">
+                                <i class="fas fa-clock mr-1"></i>Pending
+                            </span>
+                        </div>
+                        <p class="text-xs text-yellow-700 leading-relaxed">${record.reason ? record.reason.substring(0, 60) + '...' : 'No reason provided'}</p>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = recordsHtml;
+        }
+
+        function refreshDigitalPasses() {
+            document.getElementById('approvedPassesList').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-purple-400 mb-2 pulse-soft"></i>
+                    <p class="text-xs text-gray-500">Refreshing...</p>
+                </div>
+            `;
+            document.getElementById('pendingPassesList').innerHTML = `
+                <div class="text-center py-8">
+                    <i class="fas fa-spinner fa-spin text-2xl text-purple-400 mb-2 pulse-soft"></i>
+                    <p class="text-xs text-gray-500">Refreshing...</p>
+                </div>
+            `;
+            loadDigitalPasses();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        function getCookie(name) {
+            const token = document.querySelector('meta[name="csrf-token"]');
+            if (token && name === 'csrftoken') {
+                return token.getAttribute('content');
+            }
+            
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Guest Request Functions
+        function openGuestRequestModal() {
+            document.getElementById('guestRequestModal').classList.remove('hidden');
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('guestStartDate').min = today;
+            document.getElementById('guestEndDate').min = today;
+        }
+
+        function closeGuestRequestModal() {
+            document.getElementById('guestRequestModal').classList.add('hidden');
+            document.getElementById('guestRequestForm').reset();
+        }
+
+        document.getElementById('guestRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const guestName = document.getElementById('guestName').value;
+            const guestRelationship = document.getElementById('guestRelationship').value;
+            const guestPhone = document.getElementById('guestPhone').value;
+            const startDate = document.getElementById('guestStartDate').value;
+            const endDate = document.getElementById('guestEndDate').value;
+            const purpose = document.getElementById('guestPurpose').value;
+            
+            if (!guestName || !guestRelationship || !startDate || !endDate) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            submitButton.disabled = true;
+            
+            fetch('/api/guest-requests/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    guest_name: guestName,
+                    relationship: guestRelationship,
+                    guest_phone: guestPhone,
+                    start_date: startDate,
+                    end_date: endDate,
+                    purpose: purpose
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.id || data.request_id) {
+                    closeGuestRequestModal();
+                    alert('Your guest request has been sent to the Warden for approval.\n\nYou will be notified once it is reviewed.');
+                    loadGuestRequests();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to submit request'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting the request.');
+            })
+            .finally(() => {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
+        });
+
+        function loadGuestRequests() {
+            fetch('/api/guest-requests/', {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/auth/login/';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+                let requests = [];
+                if (Array.isArray(data)) {
+                    requests = data;
+                } else if (data.results) {
+                    requests = data.results;
+                }
+                displayGuestRequests(requests);
+            })
+            .catch(error => {
+                console.error('Error loading guest requests:', error);
+                document.getElementById('guestRequestsList').innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No guest requests</p>
+                    </div>
+                `;
+            });
+        }
+
+        function displayGuestRequests(requests) {
+            const container = document.getElementById('guestRequestsList');
+            
+            if (!requests || requests.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No guest requests yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const requestsHtml = requests.slice(0, 5).map(request => {
+                const statusColors = {
+                    'approved': 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200',
+                    'rejected': 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200',
+                    'pending': 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
+                };
+                const statusIcons = {
+                    'approved': 'fa-check-circle text-green-600',
+                    'rejected': 'fa-times-circle text-red-600',
+                    'pending': 'fa-clock text-yellow-600'
+                };
+                
+                return `
+                    <div class="${statusColors[request.status] || statusColors['pending']} border rounded-2xl p-4 card-hover">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex-1">
+                                <div class="font-semibold text-gray-800 text-sm">${request.guest_name}</div>
+                                <div class="text-xs text-gray-600 mt-1">${formatDate(request.start_date)} - ${formatDate(request.end_date)}</div>
+                            </div>
+                            <i class="fas ${statusIcons[request.status] || statusIcons['pending']}"></i>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = requestsHtml;
+        }
+
+        // Maintenance Request Functions
+        function openMaintenanceRequestModal() {
+            document.getElementById('maintenanceRequestModal').classList.remove('hidden');
+        }
+
+        function closeMaintenanceRequestModal() {
+            document.getElementById('maintenanceRequestModal').classList.add('hidden');
+            document.getElementById('maintenanceRequestForm').reset();
+        }
+
+        document.getElementById('maintenanceRequestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const issueType = document.getElementById('issueType').value;
+            const priority = document.getElementById('maintenancePriority').value;
+            const description = document.getElementById('maintenanceDescription').value;
+            
+            if (!issueType || !description) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            submitButton.disabled = true;
+            
+            fetch('/api/maintenance-requests/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    issue_type: issueType,
+                    priority: priority,
+                    description: description,
+                    room_number: '{{ student.room_number }}'
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json().then(data => ({ success: true, data }));
+                } else {
+                    return response.json().then(data => ({ success: false, data }));
+                }
+            })
+            .then(result => {
+                if (result.success || result.data.id || result.data.request_id) {
+                    closeMaintenanceRequestModal();
+                    alert('Maintenance request submitted successfully!');
+                    loadMaintenanceRequests();
+                } else {
+                    alert('Error: ' + (result.data.error || 'Failed to submit request'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while submitting the request.');
+            })
+            .finally(() => {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
+        });
+
+        function loadMaintenanceRequests() {
+            fetch('/api/maintenance-requests/', {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/auth/login/';
+                    return null;
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+                let requests = [];
+                if (Array.isArray(data)) {
+                    requests = data;
+                } else if (data.results) {
+                    requests = data.results;
+                }
+                displayMaintenanceRequests(requests);
+            })
+            .catch(error => {
+                console.error('Error loading maintenance requests:', error);
+                document.getElementById('maintenanceRequestsList').innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No maintenance requests</p>
+                    </div>
+                `;
+            });
+        }
+
+        function displayMaintenanceRequests(requests) {
+            const container = document.getElementById('maintenanceRequestsList');
+            
+            if (!requests || requests.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-inbox text-2xl text-gray-400"></i>
+                        </div>
+                        <p class="text-sm text-gray-500">No maintenance requests</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const requestsHtml = requests.slice(0, 5).map(request => {
+                const priorityColors = {
+                    'emergency': 'bg-red-100 text-red-800',
+                    'high': 'bg-orange-100 text-orange-800',
+                    'medium': 'bg-yellow-100 text-yellow-800',
+                    'low': 'bg-green-100 text-green-800'
+                };
+                
+                return `
+                    <div class="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-4 card-hover">
+                        <div class="flex items-start justify-between mb-2">
+                            <div class="flex-1">
+                                <div class="font-semibold text-gray-800 text-sm capitalize">${request.issue_type}</div>
+                                <div class="text-xs text-gray-600 mt-1">Room ${request.room_number}</div>
+                            </div>
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold ${priorityColors[request.priority]}">
+                                ${request.priority.toUpperCase()}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">${request.description.substring(0, 50)}...</p>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = requestsHtml;
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Student dashboard loaded - initializing...');
+            loadGuestRequests();
+            loadMaintenanceRequests();
+            loadDigitalPasses();
+            
+            // Check if we should open leave request modal (from profile page link)
+            if (localStorage.getItem('openLeaveModal') === 'true') {
+                localStorage.removeItem('openLeaveModal');
+                openLeaveRequestModal();
+            }
+        });
+    </script>
+</body>
+</html>

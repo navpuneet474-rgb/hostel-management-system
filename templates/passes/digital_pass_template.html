@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Leave Pass - {{ student.name }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: white;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .pass-container {
+            max-width: 100%;
+            width: 100%;
+            page-break-after: avoid;
+        }
+        
+        .approval-section {
+            text-align: center;
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        
+        .approval-icon {
+            width: 50px;
+            height: 50px;
+            background: #d1fae5;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            font-size: 28px;
+            line-height: 50px;
+            text-align: center;
+        }
+        
+        .approval-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 6px;
+        }
+        
+        .approval-message {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .pass-card {
+            background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+            border-radius: 12px;
+            color: white;
+            padding: 24px;
+            margin-bottom: 16px;
+            page-break-inside: avoid;
+        }
+        
+        .pass-header {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            clear: both;
+        }
+        
+        .pass-title-section {
+            float: left;
+            width: 55%;
+        }
+        
+        .pass-title-section h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: white;
+            line-height: 1.3;
+        }
+        
+        .pass-title-section p {
+            font-size: 12px;
+            opacity: 0.9;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        
+        .pass-number-section {
+            float: right;
+            text-align: right;
+            width: 43%;
+        }
+        
+        .pass-number-section .label {
+            font-size: 9px;
+            opacity: 0.85;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 3px;
+        }
+        
+        .pass-number-section .number {
+            font-size: 13px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            margin-top: 0;
+            color: white;
+            line-height: 1.3;
+        }
+        
+        .pass-details {
+            overflow: hidden;
+            margin-bottom: 14px;
+            clear: both;
+        }
+        
+        .detail-item {
+            float: left;
+            width: 50%;
+            margin-bottom: 12px;
+            font-size: 12px;
+            padding-right: 8px;
+        }
+        
+        .detail-label {
+            opacity: 0.85;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            display: block;
+            line-height: 1.3;
+        }
+        
+        .detail-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            line-height: 1.4;
+        }
+        
+        .student-details-section {
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            clear: both;
+            margin-bottom: 12px;
+        }
+        
+        .student-details-label {
+            font-size: 10px;
+            opacity: 0.9;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 4px;
+            font-weight: 600;
+            display: block;
+            line-height: 1.3;
+        }
+        
+        .student-details-value {
+            font-size: 12px;
+            color: white;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+        
+        .qr-section {
+            text-align: center;
+            margin-top: 14px;
+            margin-bottom: 14px;
+            clear: both;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .qr-code {
+            max-width: 90px;
+            margin: 0 auto 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .qr-code img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .verification-code {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 6px;
+        }
+        
+        .verification-code .label {
+            opacity: 0.8;
+            color: rgba(255, 255, 255, 0.75);
+            display: block;
+            margin-bottom: 3px;
+            font-weight: 600;
+            font-size: 9px;
+            line-height: 1.3;
+        }
+        
+        .verification-code .code {
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 12px;
+            color: white;
+            line-height: 1.4;
+        }
+        
+        .security-notice {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1f2937;
+            padding: 12px 14px;
+            border-radius: 6px;
+            font-size: 10px;
+            line-height: 1.6;
+            margin-top: 14px;
+            page-break-inside: avoid;
+            clear: both;
+        }
+        
+        .security-notice strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .footer {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 9px;
+            margin-top: 12px;
+            page-break-inside: avoid;
+        }
+        
+        @media print {
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+            
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .pass-container {
+                page-break-after: avoid;
+            }
+            
+            .pass-card {
+                margin-bottom: 0;
+                page-break-inside: avoid;
+            }
+            
+            .approval-section {
+                page-break-inside: avoid;
+            }
+            
+            .security-notice {
+                page-break-inside: avoid;
+            }
+            
+            .footer {
+                page-break-inside: avoid;
+            }
+        }
+        
+        .label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+        
+        .value {
+            color: #555;
+            font-size: 0.95rem;
+        }
+        
+        .student-photo {
+            width: 100px;
+            height: 120px;
+            object-fit: cover;
+            border: 3px solid #4e73df;
+            border-radius: 8px;
+        }
+        
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        
+        .qr-code {
+            max-width: 120px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            background: #f8f9fa;
+        }
+        
+        .pass-id {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #4e73df;
+            font-size: 1.1rem;
+        }
+        
+        .validity-info {
+            background: #f8f9fa;
+            border-left: 4px solid #4e73df;
+            padding: 10px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .security-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #856404;
+        }
+        
+        .hostel-logo {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-size: 1.2rem;
+            color: #4e73df;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            .pass-container {
+                margin: 0 !important;
+                max-width: none !important;
+            }
+    </style>
+</head>
+<body>
+    <div class="pass-container">
+        <!-- Approval Section -->
+        <div class="approval-section">
+            <div class="approval-icon">✓</div>
+            <h3 class="approval-title">Leave Approved!</h3>
+            <p class="approval-message">Leave request auto-approved! Digital pass generated: {{ digital_pass.pass_number }}</p>
+        </div>
+        
+        <!-- Digital Pass Card -->
+        <div class="pass-card">
+            <!-- Pass Header -->
+            <div class="pass-header">
+                <div class="pass-title-section">
+                    <h4>Digital Leave Pass</h4>
+                    <p>{{ student.name }}</p>
+                </div>
+                <div class="pass-number-section">
+                    <div class="label">Pass Number</div>
+                    <div class="number">{{ digital_pass.pass_number }}</div>
+                </div>
+            </div>
+            
+            <!-- Pass Details -->
+            <div class="pass-details">
+                <div class="detail-item">
+                    <div class="detail-label">From Date</div>
+                    <div class="detail-value">{{ digital_pass.from_date|date:"M d, Y" }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">To Date</div>
+                    <div class="detail-value">{{ digital_pass.to_date|date:"M d, Y" }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Total Days</div>
+                    <div class="detail-value">{{ digital_pass.total_days }}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Verification Code</div>
+                    <div class="detail-value" style="font-family: 'Courier New', monospace;">{{ digital_pass.verification_code }}</div>
+                </div>
+            </div>
+            
+            <!-- Student Details -->
+            <div class="student-details-section" style="border-top: none; padding-top: 0;">
+                <div class="student-details-label">Student Details</div>
+                <div class="student-details-value">
+                    {{ student.student_id }} • Room {{ student.room_number }}{% if student.block %}, Block {{ student.block }}{% endif %}
+                </div>
+            </div>
+            
+            <!-- Leave Reason -->
+            <div class="student-details-section">
+                <div class="student-details-label">Reason for Leave</div>
+                <div class="student-details-value">
+                    {{ digital_pass.reason }}
+                </div>
+            </div>
+            
+            <!-- Approval Information -->
+            <div class="student-details-section">
+                <div class="student-details-label">Approval Details</div>
+                <div class="student-details-value" style="font-size: 11px; line-height: 1.6;">
+                    {% if digital_pass.approved_by %}
+                        Approved by: {{ digital_pass.approved_by.name }} ({{ digital_pass.approved_by.get_role_display }})<br>
+                    {% else %}
+                        Approved by: System (Auto-Approval)<br>
+                    {% endif %}
+                    Approval Type: <strong>{{ digital_pass.get_approval_type_display }}</strong> | Status: <strong style="color: #86efac;">{{ digital_pass.get_status_display|upper }}</strong>
+                </div>
+            </div>
+            
+            <!-- QR Code Section -->
+            <div class="qr-section">
+                {% if qr_code_data %}
+                    <div class="qr-code">
+                        <img src="data:image/png;base64,{{ qr_code_data }}" alt="QR Code">
+                    </div>
+                {% endif %}
+                <div class="verification-code">
+                    <span class="label">Verification Code</span>
+                    <div class="code">{{ digital_pass.verification_code }}</div>
+                </div>
+            </div>
+            
+            <!-- Official Notice Section -->
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.15); font-size: 9px; line-height: 1.6; color: rgba(255, 255, 255, 0.95); clear: both;">
+                <strong style="display: block; margin-bottom: 6px; font-size: 10px; color: white; line-height: 1.4;">⚠️ OFFICIAL NOTICE:</strong>
+                <div style="margin-bottom: 8px;">This digital leave pass is an official authorization document that permits the above-named student to leave the hostel premises for the specified duration.</div>
+                <strong style="font-size: 9px; display: block; margin-bottom: 4px; line-height: 1.4;">Security Instructions:</strong>
+                <div style="line-height: 1.7;">
+                • Valid only for the specified dates<br>
+                • Student must carry this pass during entries/exits<br>
+                • Verification code must be matched at checkpoints<br>
+                • Report any discrepancy immediately<br>
+                • Non-transferable and valid only for the mentioned student
+                </div>
+            </div>
+        </div>
+        
+        <!-- Security Notice -->
+        <div class="security-notice">
+            <strong>🔒 Security Notice:</strong> This pass authorizes the student to leave hostel premises for specified dates. Verify details before allowing entry/exit.
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            Generated on {{ now|date:"d M Y, H:i" }}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Active Passes - Security Dashboard{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-red-600 to-red-700 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <i class="fas fa-id-card text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Active Passes</h1>
+                        <p class="text-sm text-red-100">All currently valid digital passes</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'security_dashboard' %}" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Back to Dashboard</span>
+                    </a>
+                    <button onclick="location.reload()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Statistics Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-600">Total Active</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ active_passes|length }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-clock text-blue-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-600">Expiring Today</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ expiring_today }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-yellow-500">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-calendar-day text-yellow-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-600">Today's Date</p>
+                        <p class="text-lg font-bold text-gray-900">{{ today|date:"d M Y" }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-hourglass-half text-purple-600"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-gray-600">Long Leaves (7+ days)</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ long_leaves }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="Search by name, ID, room, or pass number..." 
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="sortBy" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                        <option value="name">Sort by Name</option>
+                        <option value="room">Sort by Room</option>
+                        <option value="expiry">Sort by Expiry</option>
+                        <option value="days">Sort by Days Remaining</option>
+                    </select>
+                    <button onclick="exportToCSV()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2">
+                        <i class="fas fa-file-csv"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Passes Table -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200" id="passesTable">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pass Number</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Left</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="passesBody">
+                        {% if active_passes %}
+                            {% for pass in active_passes %}
+                            <tr class="hover:bg-gray-50 pass-row" 
+                                data-name="{{ pass.student.name|lower }}" 
+                                data-id="{{ pass.student.student_id|lower }}"
+                                data-room="{{ pass.student.room_number|lower }}"
+                                data-pass="{{ pass.pass_number|lower }}"
+                                data-days="{{ pass.days_remaining }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                            <span class="text-red-700 font-semibold text-sm">{{ pass.student.name|make_list|first|upper }}</span>
+                                        </div>
+                                        <div class="ml-3">
+                                            <p class="text-sm font-medium text-gray-900">{{ pass.student.name }}</p>
+                                            <p class="text-xs text-gray-500">{{ pass.student.student_id }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="font-mono text-sm text-gray-900">{{ pass.pass_number }}</span>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-qrcode mr-1"></i>{{ pass.verification_code }}
+                                    </p>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="text-sm text-gray-900">{{ pass.student.room_number }}</span>
+                                    {% if pass.student.block %}
+                                    <span class="text-xs text-gray-500 block">Block {{ pass.student.block }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <p class="text-sm text-gray-900">{{ pass.from_date|date:"d M" }} - {{ pass.to_date|date:"d M" }}</p>
+                                    <p class="text-xs text-gray-500">{{ pass.total_days }} day{{ pass.total_days|pluralize }}</p>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if pass.days_remaining == 0 %}
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">
+                                        Expires Today
+                                    </span>
+                                    {% elif pass.days_remaining == 1 %}
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                        1 day left
+                                    </span>
+                                    {% else %}
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                        {{ pass.days_remaining }} days left
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4">
+                                    <p class="text-sm text-gray-900 max-w-xs truncate" title="{{ pass.reason }}">{{ pass.reason|truncatewords:6 }}</p>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>Active
+                                    </span>
+                                    {% if pass.approval_type == 'auto' %}
+                                    <span class="block text-xs text-gray-500 mt-1">Auto-approved</span>
+                                    {% else %}
+                                    <span class="block text-xs text-gray-500 mt-1">Warden approved</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button onclick="verifyPass('{{ pass.pass_number }}')" 
+                                                class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 transition-colors text-sm">
+                                            <i class="fas fa-check mr-1"></i>Verify
+                                        </button>
+                                        <a href="{% url 'core:view_digital_pass' pass.pass_number %}" target="_blank"
+                                           class="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                            <i class="fas fa-eye mr-1"></i>View
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center justify-center text-gray-500">
+                                        <i class="fas fa-id-card text-6xl mb-4 text-gray-300"></i>
+                                        <p class="text-lg font-medium">No Active Passes</p>
+                                        <p class="text-sm">There are no active digital passes at the moment.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verification Modal -->
+<div id="verifyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl p-6 max-w-md mx-4 w-full">
+        <div id="verifyContent">
+            <div class="flex items-center justify-center py-8">
+                <i class="fas fa-spinner fa-spin text-4xl text-red-600"></i>
+            </div>
+        </div>
+        <button onclick="closeVerifyModal()" class="mt-4 w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors">
+            Close
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.pass-row');
+        
+        rows.forEach(row => {
+            const name = row.dataset.name;
+            const id = row.dataset.id;
+            const room = row.dataset.room;
+            const pass = row.dataset.pass;
+            
+            if (name.includes(query) || id.includes(query) || room.includes(query) || pass.includes(query)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Sort functionality
+    document.getElementById('sortBy').addEventListener('change', function() {
+        const sortBy = this.value;
+        const tbody = document.getElementById('passesBody');
+        const rows = Array.from(tbody.querySelectorAll('.pass-row'));
+        
+        rows.sort((a, b) => {
+            switch(sortBy) {
+                case 'name':
+                    return a.dataset.name.localeCompare(b.dataset.name);
+                case 'room':
+                    return a.dataset.room.localeCompare(b.dataset.room);
+                case 'days':
+                    return parseInt(a.dataset.days) - parseInt(b.dataset.days);
+                case 'expiry':
+                    return parseInt(a.dataset.days) - parseInt(b.dataset.days);
+                default:
+                    return 0;
+            }
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+    });
+    
+    // Verify pass
+    function verifyPass(passNumber) {
+        const modal = document.getElementById('verifyModal');
+        const content = document.getElementById('verifyContent');
+        modal.classList.remove('hidden');
+        
+        fetch('/api/verify-pass/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ pass_number: passNumber })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.verification_result && data.verification_result.valid) {
+                const result = data.verification_result;
+                content.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-check-circle text-green-600 text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-green-800 mb-2">Pass Verified!</h3>
+                        <div class="bg-green-50 rounded-lg p-4 text-left">
+                            <p class="text-sm"><span class="text-gray-600">Student:</span> <strong>${result.student_name}</strong></p>
+                            <p class="text-sm"><span class="text-gray-600">Room:</span> <strong>${result.room_number}</strong></p>
+                            <p class="text-sm"><span class="text-gray-600">Pass #:</span> <strong class="font-mono">${result.pass_number}</strong></p>
+                            <p class="text-sm"><span class="text-gray-600">Valid:</span> <strong>${result.from_date} to ${result.to_date}</strong></p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-times-circle text-red-600 text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-red-800 mb-2">Invalid Pass</h3>
+                        <p class="text-gray-600">${data.verification_result?.message || data.error || 'Pass not found or expired'}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            content.innerHTML = `
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-red-800 mb-2">Error</h3>
+                    <p class="text-gray-600">Failed to verify pass. Please try again.</p>
+                </div>
+            `;
+        });
+    }
+    
+    function closeVerifyModal() {
+        document.getElementById('verifyModal').classList.add('hidden');
+    }
+    
+    // Export to CSV
+    function exportToCSV() {
+        window.open('/api/security/export-report/', '_blank');
+    }
+    
+    // Get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
