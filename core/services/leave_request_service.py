@@ -5,6 +5,7 @@ Handles enhanced leave request processing, auto-approval logic, and digital pass
 
 import logging
 import os
+import threading
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, Optional, Tuple
 from django.utils import timezone
@@ -109,19 +110,13 @@ class LeaveRequestService:
                     # Update security records
                     self._update_security_records(student, digital_pass)
                     
-                    # Send auto-approval email with PDF attachment
-                    pdf_bytes = self.get_pass_pdf_bytes(digital_pass)
-                    email_success, email_message = email_service.send_auto_approval_email(
+                    # Send auto-approval email ASYNC (non-blocking) to speed up response
+                    self._send_email_async(
+                        email_type='auto_approval',
                         student=student,
                         absence_record=absence_record,
-                        digital_pass=digital_pass,
-                        pdf_bytes=pdf_bytes
+                        digital_pass=digital_pass
                     )
-                    
-                    if email_success:
-                        self.logger.info(f"Auto-approval email sent for pass {digital_pass.pass_number}")
-                    else:
-                        self.logger.warning(f"Failed to send auto-approval email: {email_message}")
                     
                     # Log the auto-approval
                     self._log_leave_decision(
@@ -142,18 +137,12 @@ class LeaveRequestService:
                     )
                 
                 else:
-                    # Requires warden approval - send escalation email
-                    escalation_results = email_service.send_escalation_email(
+                    # Requires warden approval - send escalation email ASYNC (non-blocking)
+                    self._send_escalation_email_async(
                         student=student,
                         absence_record=absence_record
                     )
-                    
-                    # Log escalation email results
-                    successful_escalations = sum(1 for success, _ in escalation_results.values() if success)
-                    if successful_escalations > 0:
-                        self.logger.info(f"Escalation emails sent to {successful_escalations} staff members for absence {absence_record.absence_id}")
-                    else:
-                        self.logger.warning(f"Failed to send escalation emails for absence {absence_record.absence_id}")
+
                     
                     self._log_leave_decision(
                         student=student,
@@ -179,7 +168,37 @@ class LeaveRequestService:
                 message="An error occurred while processing your leave request",
                 error=str(e)
             )
-    
+    def _send_escalation_email_async(
+        self,
+        student: Student,
+        absence_record: AbsenceRecord
+    ):
+        """
+        Send escalation emails in a background thread (non-blocking).
+        This speeds up the API response by not waiting for SMTP.
+        """
+        def send_escalation_task():
+            try:
+                escalation_results = email_service.send_escalation_email(
+                    student=student,
+                    absence_record=absence_record
+                )
+                
+                # Log escalation email results
+                successful_escalations = sum(1 for success, _ in escalation_results.values() if success)
+                if successful_escalations > 0:
+                    self.logger.info(f"Async escalation emails sent to {successful_escalations} staff members for absence {absence_record.absence_id}")
+                else:
+                    self.logger.warning(f"Failed to send async escalation emails for absence {absence_record.absence_id}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error in async escalation email task: {e}")
+        
+        # Start email sending in background thread
+        email_thread = threading.Thread(target=send_escalation_task, daemon=True)
+        email_thread.start()
+        self.logger.info(f"Started async escalation email thread for absence {absence_record.absence_id}")
+        
     def approve_leave_request(
         self, 
         absence_record: AbsenceRecord, 
@@ -232,20 +251,14 @@ class LeaveRequestService:
                 # Update security records
                 self._update_security_records(absence_record.student, digital_pass)
                 
-                # Send warden approval email with PDF attachment
-                pdf_bytes = self.get_pass_pdf_bytes(digital_pass)
-                email_success, email_message = email_service.send_warden_approval_email(
+                # Send warden approval email ASYNC (non-blocking) to speed up response
+                self._send_email_async(
+                    email_type='warden_approval',
                     student=absence_record.student,
                     absence_record=absence_record,
                     digital_pass=digital_pass,
-                    approved_by=approved_by,
-                    pdf_bytes=pdf_bytes
+                    approved_by=approved_by
                 )
-                
-                if email_success:
-                    self.logger.info(f"Warden approval email sent for pass {digital_pass.pass_number}")
-                else:
-                    self.logger.warning(f"Failed to send warden approval email: {email_message}")
                 
                 # Log the approval
                 self._log_leave_decision(
@@ -424,6 +437,62 @@ class LeaveRequestService:
         
         self.logger.info(f"Security record updated for student {student.student_id} - allowed to leave")
         return security_record
+    
+    def _send_email_async(
+        self,
+        email_type: str,
+        student: Student,
+        absence_record: AbsenceRecord,
+        digital_pass: DigitalPass,
+        approved_by: Optional[Staff] = None
+    ):
+        """
+        Send email notification in a background thread (non-blocking).
+        This speeds up the API response by not waiting for SMTP.
+        
+        Args:
+            email_type: 'auto_approval' or 'warden_approval'
+            student: Student receiving the email
+            absence_record: The absence record
+            digital_pass: The generated digital pass
+            approved_by: Staff member who approved (for warden_approval)
+        """
+        def send_email_task():
+            try:
+                # Get PDF bytes (this might be cached from earlier generation)
+                pdf_bytes = self.get_pass_pdf_bytes(digital_pass)
+                
+                if email_type == 'auto_approval':
+                    success, message = email_service.send_auto_approval_email(
+                        student=student,
+                        absence_record=absence_record,
+                        digital_pass=digital_pass,
+                        pdf_bytes=pdf_bytes
+                    )
+                elif email_type == 'warden_approval' and approved_by:
+                    success, message = email_service.send_warden_approval_email(
+                        student=student,
+                        absence_record=absence_record,
+                        digital_pass=digital_pass,
+                        approved_by=approved_by,
+                        pdf_bytes=pdf_bytes
+                    )
+                else:
+                    self.logger.error(f"Unknown email type: {email_type}")
+                    return
+                
+                if success:
+                    self.logger.info(f"Async {email_type} email sent for pass {digital_pass.pass_number}")
+                else:
+                    self.logger.warning(f"Failed to send async {email_type} email: {message}")
+                    
+            except Exception as e:
+                self.logger.error(f"Error in async email task: {e}")
+        
+        # Start email sending in background thread
+        email_thread = threading.Thread(target=send_email_task, daemon=True)
+        email_thread.start()
+        self.logger.info(f"Started async {email_type} email thread for pass {digital_pass.pass_number}")
     
     def _log_leave_decision(
         self,

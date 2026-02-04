@@ -46,38 +46,13 @@ from .services.message_router_service import message_router, ProcessingResult, P
 from .services.daily_summary_service import daily_summary_generator as daily_summary_service
 from .services.followup_bot_service import followup_bot_service
 from .services.leave_request_service import leave_request_service
+from .authentication import get_authenticated_user
+from .utils import get_or_create_dev_staff, get_staff_from_request_or_dev, build_pass_history_query, format_pass_history_records
 
 logger = logging.getLogger(__name__)
 
-def get_user_from_request(request):
-    """
-    Get the authenticated user from the request.
-    Supports both JWT and session-based authentication.
-    
-    Returns:
-        Tuple of (user_object, auth_type) where:
-        - user_object: Student or Staff instance, or None if not authenticated
-        - auth_type: 'jwt', 'session', or None
-    """
-    from .authentication import get_authenticated_user
-    
-    # Debug: log session info before auth check
-    session_keys = list(request.session.keys()) if hasattr(request, 'session') else []
-    session_user_id = request.session.get('user_id') if hasattr(request, 'session') else None
-    session_user_type = request.session.get('user_type') if hasattr(request, 'session') else None
-    
-    logger.debug(f"get_user_from_request: session_keys={session_keys}, session_user_id={session_user_id}, session_user_type={session_user_type}")
-    
-    # get_authenticated_user already handles BOTH JWT and session authentication
-    user_object, auth_type = get_authenticated_user(request)
-    
-    logger.debug(f"get_user_from_request: auth_type={auth_type}, user_object={user_object}")
-    
-    if user_object:
-        # Return the actual auth_type (jwt or session) instead of always 'jwt'
-        return user_object, auth_type
-    
-    return None, None
+# Alias for backward compatibility - use get_authenticated_user directly in new code
+get_user_from_request = get_authenticated_user
     
 @method_decorator(csrf_exempt, name='dispatch')
 class MessageViewSet(ModelViewSet):
@@ -772,20 +747,7 @@ def staff_query(request):
     
     try:
         # Get or create default staff for development
-        staff_member = None
-        if hasattr(request.user, 'user_object') and request.user.user_object:
-            staff_member = request.user.user_object
-        else:
-            # Development mode - use or create a default staff member
-            staff_member, created = Staff.objects.get_or_create(
-                staff_id='STAFF001',
-                defaults={
-                    'name': 'Development Warden',
-                    'role': 'warden',
-                    'email': 'warden@hostel.edu',
-                    'phone': '9876543210'
-                }
-            )
+        staff_member = get_staff_from_request_or_dev(request)
         
         # Process the query through the message router
         query_result = message_router.handle_staff_query(validated_query, staff_member)
@@ -1056,15 +1018,7 @@ def reject_request(request):
     
     try:
         # Get or create default staff for development
-        staff_member, created = Staff.objects.get_or_create(
-            staff_id='STAFF001',
-            defaults={
-                'name': 'Development Warden',
-                'role': 'warden',
-                'email': 'warden@hostel.edu',
-                'phone': '9876543210'
-            }
-        )
+        staff_member, _ = get_or_create_dev_staff()
         
         if request_type == 'guest':
             guest_request = get_object_or_404(GuestRequest, request_id=request_id)
@@ -1427,20 +1381,7 @@ def approve_leave_request(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Get or create default staff for development
-        staff_member = None
-        if hasattr(request.user, 'user_object') and request.user.user_object:
-            staff_member = request.user.user_object
-        else:
-            # Development mode - use default staff
-            staff_member, created = Staff.objects.get_or_create(
-                staff_id='STAFF001',
-                defaults={
-                    'name': 'Development Warden',
-                    'role': 'warden',
-                    'email': 'warden@hostel.edu',
-                    'phone': '9876543210'
-                }
-            )
+        staff_member = get_staff_from_request_or_dev(request)
         
         # Approve the leave request
         result = leave_request_service.approve_leave_request(
@@ -1532,20 +1473,7 @@ def reject_leave_request(request):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Get or create default staff for development
-        staff_member = None
-        if hasattr(request.user, 'user_object') and request.user.user_object:
-            staff_member = request.user.user_object
-        else:
-            # Development mode - use default staff
-            staff_member, created = Staff.objects.get_or_create(
-                staff_id='STAFF001',
-                defaults={
-                    'name': 'Development Warden',
-                    'role': 'warden',
-                    'email': 'warden@hostel.edu',
-                    'phone': '9876543210'
-                }
-            )
+        staff_member = get_staff_from_request_or_dev(request)
         
         # Reject the leave request
         result = leave_request_service.reject_leave_request(
@@ -2257,47 +2185,6 @@ def system_info(request):
         return Response({
             "error": "Unable to retrieve system information"
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    """
-    System information endpoint for debugging and monitoring.
-    """
-    try:
-        info = {
-            "project": "AI-Powered Hostel Coordination System",
-            "version": "1.0.0",
-            "django_version": "4.2.7",
-            "features": [
-                "Natural Language Processing",
-                "Auto-Approval Engine", 
-                "Follow-up Bot System",
-                "Message Routing",
-                "Daily Summaries",
-                "Comprehensive Audit Logging"
-            ],
-            "endpoints": {
-                "health": "/api/health/",
-                "info": "/api/info/",
-                "messages": "/api/messages/",
-                "guest-requests": "/api/guest-requests/",
-                "absence-records": "/api/absence-records/",
-                "maintenance-requests": "/api/maintenance-requests/",
-                "students": "/api/students/",
-                "staff": "/api/staff/",
-                "audit-logs": "/api/audit-logs/",
-                "staff-query": "/api/staff-query/",
-                "daily-summary": "/api/daily-summary/",
-                "conversation-status": "/api/conversation-status/"
-            },
-            "environment": "development",
-            "database_status": "connected"
-        }
-        
-        return Response(info, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"System info request failed: {e}")
-        return Response({
-            "error": "Unable to retrieve system information"
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def chat_interface(request):
@@ -2370,9 +2257,6 @@ def chat_interface(request):
 def get_pass_history(request):
     """Get comprehensive pass history for staff/admin."""
     try:
-        from django.db.models import Q
-        from django.utils import timezone
-        
         logger.info(f"get_pass_history called with params: {dict(request.query_params)}")
         
         # Get filter parameters
@@ -2384,99 +2268,19 @@ def get_pass_history(request):
         
         logger.info(f"Filters - start: {start_date_str}, end: {end_date_str}, pass_type: {pass_type}, status: {status_filter}")
         
-        # Query digital passes - fetch all to see total count
-        digital_passes = DigitalPass.objects.select_related(
-            'student', 'approved_by'
-        ).all()
+        # Use shared utility function for filtering
+        digital_passes, absence_records = build_pass_history_query(
+            start_date_str=start_date_str,
+            end_date_str=end_date_str,
+            student_name=student_name,
+            status_filter=status_filter,
+            pass_type=pass_type
+        )
         
-        # Query absence records (includes all statuses)
-        absence_records = AbsenceRecord.objects.select_related(
-            'student', 'approved_by'
-        ).all()
+        logger.info(f"After filtering: digital_passes={digital_passes.count()}, absence_records={absence_records.count()}")
         
-        logger.info(f"Total digital passes before filter: {digital_passes.count()}")
-        logger.info(f"Total absence records before filter: {absence_records.count()}")
-        
-        # Apply filters
-        if start_date_str:
-            try:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                digital_passes = digital_passes.filter(from_date__gte=start_date)
-                # For AbsenceRecord, convert to datetime at midnight
-                start_datetime = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
-                absence_records = absence_records.filter(start_date__gte=start_datetime)
-                logger.info(f"After start_date filter: digital_passes={digital_passes.count()}, absence_records={absence_records.count()}")
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid start_date format: {start_date_str}, {e}")
-                pass  # Ignore invalid date format
-        
-        if end_date_str:
-            try:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                digital_passes = digital_passes.filter(to_date__lte=end_date)
-                # For AbsenceRecord, convert to datetime at end of day
-                end_datetime = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
-                absence_records = absence_records.filter(end_date__lte=end_datetime)
-                logger.info(f"After end_date filter: digital_passes={digital_passes.count()}, absence_records={absence_records.count()}")
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid end_date format: {end_date_str}, {e}")
-                pass  # Ignore invalid date format
-        
-        if student_name and student_name.strip():
-            digital_passes = digital_passes.filter(student__name__icontains=student_name)
-            absence_records = absence_records.filter(student__name__icontains=student_name)
-            logger.info(f"After name filter: digital_passes={digital_passes.count()}, absence_records={absence_records.count()}")
-        
-        if status_filter and status_filter.strip():
-            digital_passes = digital_passes.filter(status=status_filter)
-            absence_records = absence_records.filter(status=status_filter)
-            logger.info(f"After status filter: digital_passes={digital_passes.count()}, absence_records={absence_records.count()}")
-        
-        # Combine and format results
-        history = []
-        
-        # Add digital passes
-        if not pass_type or pass_type == 'digital':
-            for pass_obj in digital_passes:
-                try:
-                    history.append({
-                        'type': 'digital_pass',
-                        'student_name': pass_obj.student.name,
-                        'student_id': pass_obj.student.student_id,
-                        'room_number': pass_obj.student.room_number,
-                        'pass_number': pass_obj.pass_number,
-                        'from_date': pass_obj.from_date.isoformat(),
-                        'to_date': pass_obj.to_date.isoformat(),
-                        'total_days': pass_obj.total_days,
-                        'status': pass_obj.status,
-                        'approved_by': pass_obj.approved_by.name if pass_obj.approved_by else 'Auto-Approved',
-                        'created_at': pass_obj.created_at.isoformat()
-                    })
-                except Exception as e:
-                    logger.error(f"Error processing digital pass {pass_obj.pass_number}: {e}")
-        
-        # Add absence records (including rejected)
-        if not pass_type or pass_type == 'leave':
-            for absence in absence_records:
-                try:
-                    history.append({
-                        'type': 'leave_request',
-                        'student_name': absence.student.name,
-                        'student_id': absence.student.student_id,
-                        'room_number': absence.student.room_number,
-                        'pass_number': f"LR-{absence.absence_id}",
-                        'from_date': absence.start_date.date().isoformat(),
-                        'to_date': absence.end_date.date().isoformat(),
-                        'total_days': (absence.end_date.date() - absence.start_date.date()).days + 1,
-                        'status': absence.status,
-                        'approved_by': absence.approved_by.name if absence.approved_by else 'Pending',
-                        'created_at': absence.created_at.isoformat()
-                    })
-                except Exception as e:
-                    logger.error(f"Error processing absence record {absence.absence_id}: {e}")
-        
-        # Sort by created_at (newest first)
-        history.sort(key=lambda x: x['created_at'], reverse=True)
+        # Use shared utility function for formatting
+        history = format_pass_history_records(digital_passes, absence_records, pass_type)
         
         logger.info(f"Returning {len(history)} records")
         
@@ -2502,91 +2306,24 @@ def export_pass_history(request):
         import csv
         from io import StringIO
         
-        # Get filter parameters (reuse same logic as get_pass_history)
+        # Get filter parameters
         start_date_str = request.query_params.get('start_date')
         end_date_str = request.query_params.get('end_date')
         student_name = request.query_params.get('student_name')
         pass_type = request.query_params.get('pass_type')
         status_filter = request.query_params.get('status')
         
-        # Query digital passes
-        digital_passes = DigitalPass.objects.select_related(
-            'student', 'approved_by'
-        ).all()
+        # Use shared utility function for filtering
+        digital_passes, absence_records = build_pass_history_query(
+            start_date_str=start_date_str,
+            end_date_str=end_date_str,
+            student_name=student_name,
+            status_filter=status_filter,
+            pass_type=pass_type
+        )
         
-        # Query absence records
-        absence_records = AbsenceRecord.objects.select_related(
-            'student', 'approved_by'
-        ).all()
-        
-        # Apply filters
-        if start_date_str:
-            try:
-                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-                digital_passes = digital_passes.filter(from_date__gte=start_date)
-                # For AbsenceRecord, convert to datetime at midnight
-                start_datetime = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
-                absence_records = absence_records.filter(start_date__gte=start_datetime)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid start_date format: {start_date_str}, {e}")
-                pass
-        
-        if end_date_str:
-            try:
-                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-                digital_passes = digital_passes.filter(to_date__lte=end_date)
-                # For AbsenceRecord, convert to datetime at end of day
-                end_datetime = timezone.make_aware(datetime.combine(end_date, datetime.max.time()))
-                absence_records = absence_records.filter(end_date__lte=end_datetime)
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid end_date format: {end_date_str}, {e}")
-                pass
-        
-        if student_name and student_name.strip():
-            digital_passes = digital_passes.filter(student__name__icontains=student_name)
-            absence_records = absence_records.filter(student__name__icontains=student_name)
-        
-        if status_filter and status_filter.strip():
-            digital_passes = digital_passes.filter(status=status_filter)
-            absence_records = absence_records.filter(status=status_filter)
-        
-        # Combine results
-        history = []
-        
-        if not pass_type or pass_type == 'digital':
-            for pass_obj in digital_passes:
-                history.append({
-                    'type': 'digital_pass',
-                    'student_name': pass_obj.student.name,
-                    'student_id': pass_obj.student.student_id,
-                    'room_number': pass_obj.student.room_number,
-                    'pass_number': pass_obj.pass_number,
-                    'from_date': pass_obj.from_date.isoformat(),
-                    'to_date': pass_obj.to_date.isoformat(),
-                    'total_days': pass_obj.total_days,
-                    'status': pass_obj.status,
-                    'approved_by': pass_obj.approved_by.name if pass_obj.approved_by else 'Auto-Approved',
-                    'created_at': pass_obj.created_at.isoformat()
-                })
-        
-        if not pass_type or pass_type == 'leave':
-            for absence in absence_records:
-                history.append({
-                    'type': 'leave_request',
-                    'student_name': absence.student.name,
-                    'student_id': absence.student.student_id,
-                    'room_number': absence.student.room_number,
-                    'pass_number': f"LR-{absence.absence_id}",
-                    'from_date': absence.start_date.date().isoformat(),
-                    'to_date': absence.end_date.date().isoformat(),
-                    'total_days': (absence.end_date.date() - absence.start_date.date()).days + 1,
-                    'status': absence.status,
-                    'approved_by': absence.approved_by.name if absence.approved_by else 'Pending',
-                    'created_at': absence.created_at.isoformat()
-                })
-        
-        # Sort by created_at
-        history.sort(key=lambda x: x['created_at'], reverse=True)
+        # Use shared utility function for formatting
+        history = format_pass_history_records(digital_passes, absence_records, pass_type)
         
         # Create CSV content
         output = StringIO()
@@ -2638,22 +2375,8 @@ def staff_dashboard(request):
     Render the staff dashboard for wardens and administrators.
     Provides overview of pending requests, daily summaries, and management tools.
     """
-    # For development, create a default staff member if none exists
-    staff_member = None
-    if hasattr(request.user, 'user_object') and request.user.user_object:
-        staff_member = request.user.user_object
-    else:
-        # Development mode - create/get default staff
-        staff_member, created = Staff.objects.get_or_create(
-            staff_id='STAFF001',
-            defaults={
-                'name': 'Development Warden',
-                'role': 'warden',
-                'email': 'warden@hostel.edu',
-                'phone': '9876543210',
-                'permissions': {'approve_requests': True, 'view_all_data': True}
-            }
-        )
+    # Get staff member from request or use dev staff
+    staff_member = get_staff_from_request_or_dev(request)
     
     # Get dashboard data
     try:
@@ -2885,22 +2608,8 @@ def staff_query_interface(request):
     Render the staff query interface for natural language queries.
     Provides a dedicated interface for staff to ask questions about hostel data.
     """
-    # For development, create a default staff member if none exists
-    staff_member = None
-    if hasattr(request.user, 'user_object') and request.user.user_object:
-        staff_member = request.user.user_object
-    else:
-        # Development mode - create/get default staff
-        staff_member, created = Staff.objects.get_or_create(
-            staff_id='STAFF001',
-            defaults={
-                'name': 'Development Warden',
-                'role': 'warden',
-                'email': 'warden@hostel.edu',
-                'phone': '9876543210',
-                'permissions': {'approve_requests': True, 'view_all_data': True}
-            }
-        )
+    # Get staff member from request or use dev staff
+    staff_member = get_staff_from_request_or_dev(request)
     
     context = {
         'staff': staff_member,
