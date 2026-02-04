@@ -197,11 +197,9 @@ def handle_login(request):
             request=request,
             severity='ERROR'
         )
-        # Temporarily show detailed error for debugging
         return JsonResponse({
             'success': False,
-            'error': f'Debug: {str(e)}',
-            'details': error_details[:500]  # First 500 chars of traceback
+            'error': 'An error occurred during login. Please try again.'
         }, status=500)
 
 

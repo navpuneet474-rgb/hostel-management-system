@@ -2,11 +2,6 @@ import os
 import sys
 from pathlib import Path
 
-# Debug: Check if DATABASE_URL is available at import time
-print(f"[API INIT] DATABASE_URL in env: {bool(os.environ.get('DATABASE_URL'))}")
-if os.environ.get('DATABASE_URL'):
-    print(f"[API INIT] DATABASE_URL starts with: {os.environ.get('DATABASE_URL')[:30]}...")
-
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 

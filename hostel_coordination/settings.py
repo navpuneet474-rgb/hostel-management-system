@@ -98,20 +98,13 @@ WSGI_APPLICATION = 'hostel_coordination.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Use Supabase PostgreSQL or fallback to SQLite for development
-# Try os.environ first (for Vercel), then decouple config (for local .env)
+# Use PostgreSQL from DATABASE_URL or fallback to SQLite for development
 DATABASE_URL = os.environ.get('DATABASE_URL') or config('DATABASE_URL', default=None)
-
-# Debug: Print database configuration (remove in production)
-import sys
-print(f"DATABASE_URL exists: {bool(DATABASE_URL)}", file=sys.stderr)
-print(f"DATABASE_URL from os.environ: {bool(os.environ.get('DATABASE_URL'))}", file=sys.stderr)
 
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
     }
-    print(f"Using PostgreSQL: {DATABASES['default'].get('ENGINE')}", file=sys.stderr)
 else:
     DATABASES = {
         'default': {
@@ -119,7 +112,6 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-    print("WARNING: Using SQLite (DATABASE_URL not set)", file=sys.stderr)
 
 
 # Password validation
