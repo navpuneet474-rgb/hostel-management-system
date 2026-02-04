@@ -187,16 +187,19 @@ def handle_login(request):
         })
         
     except Exception as e:
-        logger.error(f"Login error: {e}")
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Login error: {e}\n{error_details}")
         SecurityAuditLogger.log_security_event(
             event_type='login_error',
-            details={'error': str(e)},
+            details={'error': str(e), 'traceback': error_details},
             request=request,
             severity='ERROR'
         )
         return JsonResponse({
             'success': False,
-            'error': 'An error occurred during login. Please try again.'
+            'error': 'An error occurred during login. Please try again.',
+            'debug': str(e) if settings.DEBUG else None
         }, status=500)
 
 
