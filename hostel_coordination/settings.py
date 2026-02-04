@@ -37,10 +37,11 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or config('SECRET_KEY', default='djang
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', '').lower() in ('true', '1', 'yes') if os.environ.get('DEBUG') else config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver,.vercel.app').split(',')
-# Ensure .vercel.app is always allowed
-if '.vercel.app' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('.vercel.app')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver').split(',')
+# Add common deployment domains
+ALLOWED_HOSTS.extend(['.onrender.com', '.vercel.app'])
+# Remove empty strings
+ALLOWED_HOSTS = [h for h in ALLOWED_HOSTS if h]
 
 
 # Application definition
