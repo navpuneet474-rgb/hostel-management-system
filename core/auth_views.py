@@ -199,8 +199,7 @@ def handle_login(request):
         )
         return JsonResponse({
             'success': False,
-            'error': 'An error occurred during login. Please try again.',
-            'debug': str(e) if settings.DEBUG else None
+            'error': 'An error occurred during login. Please try again.'
         }, status=500)
 
 
