@@ -86,7 +86,8 @@ WSGI_APPLICATION = 'hostel_coordination.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 # Use Supabase PostgreSQL or fallback to SQLite for development
-DATABASE_URL = config('DATABASE_URL', default=None)
+# Try os.environ first (for Vercel), then decouple config (for local .env)
+DATABASE_URL = os.environ.get('DATABASE_URL') or config('DATABASE_URL', default=None)
 
 if DATABASE_URL:
     DATABASES = {
