@@ -1,4 +1,4 @@
-# Hostel Coordination System
+# AI-Powered Hostel Operations & Access Management System
 
 ## Problem Statement
 
@@ -41,23 +41,21 @@ This system transforms unstructured human communication into structured hostel m
 ## Technology Stack
 
 - **Backend**: Django 4.2.7 with Django REST Framework
-- **Database**: SQLite (development) or PostgreSQL via Supabase (production)
-- **AI/NLP**: Google Gemini AI for natural language processing (requires API key)
+- **Database**: Supabase (PostgreSQL) with Row Level Security
 - **PDF Generation**: ReportLab and WeasyPrint for digital pass creation
-- **Frontend**: HTML5, CSS, Vanilla JavaScript
+- **Frontend**: HTML5, Tailwind CSS, Vanilla JavaScript
 - **Testing**: Pytest with Hypothesis for property-based testing
 - **Email**: SMTP integration for notifications
-- **SMS Notifications**: Twilio integration (optional, requires configuration)
+- **SMS Notifications**: Twilio integration for urgent alerts
 
 ## Core Features
 
-### 1. Natural Language Processing (Requires Gemini API Key)
+### 1. Natural Language Processing
 
-- Students send requests in plain English through chat interface
-- System uses Google Gemini AI to extract intent, dates, names, and entities
+- Students send requests in plain English
+- System extracts intent, dates, names, and other entities
 - Confidence scoring ensures accuracy
 - Clarification questions for ambiguous requests
-- **Note**: Requires GEMINI_API_KEY configuration in .env file
 
 ### 2. Auto-Approval Engine
 
@@ -97,7 +95,7 @@ This system transforms unstructured human communication into structured hostel m
 ### 7. Notification System
 
 - Email notifications for leave approvals/rejections
-- SMS alerts via Twilio (optional, requires configuration)
+- SMS alerts for urgent situations (via Twilio)
 
 ---
 
@@ -106,9 +104,8 @@ This system transforms unstructured human communication into structured hostel m
 ### Prerequisites
 
 - Python 3.10 or higher
-- SQLite (included with Python) or PostgreSQL via Supabase (optional)
+- PostgreSQL (via Supabase) or SQLite for local development
 - SMTP server access (for email notifications)
-- Google Gemini API key (for AI-powered natural language processing)
 - Twilio account (optional, for SMS notifications)
 
 ### 1. Clone and Setup Environment
@@ -142,15 +139,11 @@ SECRET_KEY=your-django-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# Database Configuration (Optional - defaults to SQLite)
-# Uncomment and configure for PostgreSQL via Supabase
-# SUPABASE_URL=https://your-project.supabase.co
-# SUPABASE_KEY=your-supabase-anon-key
-# SUPABASE_SERVICE_KEY=your-supabase-service-key
-# DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
-
-# Google Gemini AI Configuration (Required for NLP features)
-GEMINI_API_KEY=your-gemini-api-key-here
+# Supabase Configuration (PostgreSQL Database)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_KEY=your-supabase-service-key
+DATABASE_URL=postgresql://postgres:password@db.your-project.supabase.co:5432/postgres
 
 # Email Configuration (for pass delivery)
 EMAIL_HOST=smtp.gmail.com
@@ -168,14 +161,12 @@ TWILIO_PHONE_NUMBER=your-twilio-phone-number
 ### 3. Database Setup
 
 ```bash
-# Run Django migrations (uses SQLite by default)
+# Run Django migrations
 python manage.py migrate
 
 # (Optional) Create Django superuser for admin access
 python manage.py createsuperuser
 ```
-
-**Note**: The system uses SQLite by default for development. To use PostgreSQL via Supabase, configure DATABASE_URL in your .env file.
 
 ### 4. Run the Application
 
@@ -193,85 +184,6 @@ python manage.py runserver
 - **Staff Dashboard**: http://localhost:8000/staff/dashboard/
 - **Login Page**: http://localhost:8000/auth/login/
 - **Admin Panel**: http://localhost:8000/admin/
-
----
-
-## Architecture Overview
-
-### System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend Layer                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Student    │  │    Staff     │  │   Security   │          │
-│  │  Dashboard   │  │  Dashboard   │  │  Dashboard   │          │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘          │
-│         │                 │                 │                    │
-│         └─────────────────┴─────────────────┘                    │
-└─────────────────────────────┼──────────────────────────────────┘
-                              │
-┌─────────────────────────────┼──────────────────────────────────┐
-│                    Django REST API Layer                         │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │              Views (core/views.py)                        │  │
-│  │  - MessageViewSet, GuestRequestViewSet                    │  │
-│  │  - AbsenceRecordViewSet, MaintenanceRequestViewSet        │  │
-│  │  - Authentication endpoints, Dashboard endpoints          │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │         Serializers (core/serializers.py)                 │  │
-│  │         - Data validation and transformation              │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-└────────────────────────┼─────────────────────────────────────────┘
-                         │
-┌────────────────────────┼─────────────────────────────────────────┐
-│                  Business Logic Layer                            │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │    Message Router (message_router_service.py)             │  │
-│  │    - Routes messages to appropriate handlers              │  │
-│  │    - Manages conversation context                         │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │    Auto Approval (auto_approval_service.py)               │  │
-│  │    - Rule-based request processing                        │  │
-│  │    - Automatic decision making                            │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │    Leave Request (leave_request_service.py)               │  │
-│  │    - Leave processing and approval workflow               │  │
-│  │    - Digital pass generation                              │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │    PDF Generation (pdf_generation_service.py)             │  │
-│  │    - Digital pass PDF creation with QR codes              │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │    Email Service (email_service.py)                       │  │
-│  │    - Email notifications for approvals/rejections         │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-└────────────────────────┼─────────────────────────────────────────┘
-                         │
-┌────────────────────────┼─────────────────────────────────────────┐
-│                    Data Layer                                    │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │           Django Models (core/models.py)                  │  │
-│  │  - Student, Staff, Message, GuestRequest                  │  │
-│  │  - AbsenceRecord, MaintenanceRequest, DigitalPass         │  │
-│  │  - AuditLog, SecurityRecord, ConversationContext          │  │
-│  └────────────────────┬──────────────────────────────────────┘  │
-│                       │                                          │
-│  ┌────────────────────┴──────────────────────────────────────┐  │
-│  │         Supabase PostgreSQL Database                      │  │
-│  │         - Persistent data storage with RLS                │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
-```
 
 ### Data Models
 
@@ -369,27 +281,10 @@ hostel_coordination/
 │   │   ├── rule_engine_service.py         # Rule evaluation engine
 │   │   └── supabase_service.py            # Database operations
 │   │
-│   ├── management/commands/      # Django management commands
-│   │   ├── generate_daily_summary.py      # Generate daily reports
-│   │   ├── send_daily_summary_email.py    # Email daily summaries
-│   │   ├── send_urgent_sms.py             # SMS notifications
-│   │   ├── setup_supabase_schema.py       # Database schema setup
-│   │   └── test_leave_emails.py           # Email template testing
-│   │
-│   ├── tests/                    # Test suite
-│   │   ├── test_api_endpoints.py          # API endpoint tests
-│   │   ├── test_authentication_helper.py  # Authentication tests
-│   │   ├── test_dashboard_service.py      # Dashboard logic tests
-│   │   ├── test_digital_pass_display.py   # Pass display tests
-│   │   ├── test_security.py               # Security feature tests
-│   │   ├── test_email_notifications.py    # Email service tests
-│   │   ├── test_comprehensive_e2e.py      # End-to-end tests
-│   │   └── test_end_to_end_chat_workflow.py  # Chat workflow tests
 │   │
 │   ├── sql/                      # Database schemas
 │   │   └── supabase_schema.sql   # Supabase PostgreSQL schema
 │   │
-│   └── migrations/               # Django database migrations
 │
 ├── hostel_coordination/          # Django project settings
 │   ├── settings.py              # Main configuration
@@ -423,23 +318,7 @@ hostel_coordination/
 │   │   └── leave_escalation.html
 │   └── base.html                # Base template
 │
-├── static/                      # Static files
-│   ├── css/
-│   │   └── chat.css
-│   └── js/
-│       ├── chat.js
-│       ├── staff-dashboard.js
-│       └── pass-history.js
-│
-├── media/                       # User-uploaded and generated files
-│   ├── passes/                  # Generated PDF passes
-│   └── chat_uploads/            # Chat file uploads
-│
-├── logs/                        # Application logs
-│   └── django.log
-│
 ├── requirements.txt             # Python dependencies
-├── pytest.ini                   # Pytest configuration
 ├── .env.example                 # Environment template
 ├── .gitignore                   # Git ignore rules
 ├── manage.py                    # Django management script
@@ -572,68 +451,6 @@ Returns CSV file with pass history data.
   "priority": "medium"
 }
 ```
-
-### Dashboard Data
-
-#### Get Dashboard Data
-
-`GET /api/dashboard-data/`
-
----
-
-## Testing
-
-### Test Structure
-
-```
-core/tests/
-├── test_api_endpoints.py              # API endpoint tests
-├── test_authentication_helper.py      # Authentication logic tests
-├── test_dashboard_service.py          # Dashboard data tests
-├── test_digital_pass_display.py       # Pass display tests
-├── test_security.py                   # Security feature tests
-├── test_email_notifications.py        # Email service tests
-├── test_comprehensive_e2e.py          # End-to-end workflow tests
-└── test_end_to_end_chat_workflow.py   # Chat interaction tests
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=core --cov-report=html
-
-# Run specific test file
-pytest core/tests/test_api_endpoints.py
-
-# Run with verbose output
-pytest -v
-
-# Run tests matching pattern
-pytest -k "test_leave"
-```
-
-### Property-Based Testing
-
-The project uses Hypothesis for property-based testing:
-
-```python
-@given(
-    start_date=dates(),
-    duration=integers(min_value=1, max_value=30)
-)
-def test_leave_duration_property(start_date, duration):
-    """Property: end_date - start_date should always equal duration"""
-    end_date = start_date + timedelta(days=duration)
-    absence = AbsenceRecord(start_date=start_date, end_date=end_date)
-    assert absence.duration_days == duration
-```
-
----
-
 ## Management Commands
 
 ```bash
@@ -653,63 +470,16 @@ python manage.py setup_supabase_schema
 python manage.py test_leave_emails
 ```
 
----
-
-## Security Considerations
-
-### Implemented Security Features
-
-1. **Authentication & Authorization**
-   - Session-based authentication
-   - Role-based access control (RBAC)
-   - Password hashing with PBKDF2
-   - First-time password change enforcement
-
-2. **Input Validation**
-   - Django form validation
-   - DRF serializer validation
-   - Custom input sanitization
-   - SQL injection prevention (ORM)
-
-3. **Data Protection**
-   - HTTPS enforcement in production
-   - Secure cookie flags (HttpOnly, Secure, SameSite)
-   - CSRF protection
-   - XSS prevention
-
-**Database Security**
-
-- Row-level security (RLS) available when using Supabase
-- Prepared statements via Django ORM
-- Connection encryption
-- Regular backups recommended
-
-5. **API Security**
-   - CORS configuration
-   - Request size limits
-   - Custom security middleware
-
-6. **Audit & Monitoring**
-   - Comprehensive audit logging
-   - Security event logging
-   - Failed login tracking
-
----
-
 ## Deployment
 
 ### Production Checklist
 
 - [ ] Set `DEBUG=False` in `.env`
 - [ ] Generate strong `SECRET_KEY`
-- [ ] Configure production database (PostgreSQL recommended)
+- [ ] Configure production database (Supabase)
 - [ ] Set up SSL/HTTPS
 - [ ] Configure ALLOWED_HOSTS
 - [ ] Configure email service (SMTP)
-- [ ] Configure Gemini API key for NLP features
-- [ ] Set up monitoring and logging
-- [ ] Configure backup strategy
-- [ ] Review security settings
 
 ### Production Environment Variables
 
