@@ -12,8 +12,18 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
-from decouple import config
 import dj_database_url
+
+# Try to import decouple, but don't fail if it's not available
+try:
+    from decouple import config
+except ImportError:
+    # Fallback: use os.environ.get if decouple is not available
+    def config(key, default=None, cast=None):
+        value = os.environ.get(key, default)
+        if cast and value is not None:
+            return cast(value)
+        return value
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +32,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-key-change-in-production')
+SECRET_KEY = os.environ.get('SECRET_KEY') or config('SECRET_KEY', default='django-insecure-development-key-change-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = os.environ.get('DEBUG', '').lower() in ('true', '1', 'yes') if os.environ.get('DEBUG') else config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver,.vercel.app').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else config('ALLOWED_HOSTS', default='localhost,127.0.0.1,testserver,.vercel.app').split(',')
+# Ensure .vercel.app is always allowed
+if '.vercel.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('.vercel.app')
 
 
 # Application definition
@@ -89,10 +102,16 @@ WSGI_APPLICATION = 'hostel_coordination.wsgi.application'
 # Try os.environ first (for Vercel), then decouple config (for local .env)
 DATABASE_URL = os.environ.get('DATABASE_URL') or config('DATABASE_URL', default=None)
 
+# Debug: Print database configuration (remove in production)
+import sys
+print(f"DATABASE_URL exists: {bool(DATABASE_URL)}", file=sys.stderr)
+print(f"DATABASE_URL from os.environ: {bool(os.environ.get('DATABASE_URL'))}", file=sys.stderr)
+
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
     }
+    print(f"Using PostgreSQL: {DATABASES['default'].get('ENGINE')}", file=sys.stderr)
 else:
     DATABASES = {
         'default': {
@@ -100,6 +119,7 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+    print("WARNING: Using SQLite (DATABASE_URL not set)", file=sys.stderr)
 
 
 # Password validation
