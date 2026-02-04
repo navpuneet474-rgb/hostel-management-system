@@ -16,13 +16,33 @@ try:
     QR_CODE_AVAILABLE = True
 except ImportError:
     QR_CODE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("QR code library not available")
+
+# Make WeasyPrint import optional and suppress warnings
+WEASYPRINT_AVAILABLE = False
+HTML = None
+CSS = None
+FontConfiguration = None
 
 try:
-    from weasyprint import HTML, CSS
-    from weasyprint.text.fonts import FontConfiguration
-    WEASYPRINT_AVAILABLE = True
-except ImportError:
-    WEASYPRINT_AVAILABLE = False
+    import warnings
+    import sys
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        # Suppress stderr output during import
+        old_stderr = sys.stderr
+        sys.stderr = open(os.devnull, 'w')
+        try:
+            from weasyprint import HTML, CSS
+            from weasyprint.text.fonts import FontConfiguration
+            WEASYPRINT_AVAILABLE = True
+        finally:
+            sys.stderr.close()
+            sys.stderr = old_stderr
+except Exception as e:
+    # WeasyPrint or its dependencies not available (expected on serverless)
+    pass
 
 from django.conf import settings
 from django.utils import timezone
