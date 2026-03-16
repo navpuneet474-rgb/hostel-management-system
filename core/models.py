@@ -14,7 +14,6 @@ class Student(models.Model):
     email = models.EmailField(unique=True, help_text="Student's email address", default='temp@example.com')
     password_hash = models.CharField(max_length=255, help_text="Hashed password", default='pbkdf2_sha256$600000$temp$temp')
     mobile_number = models.CharField(max_length=15, blank=True, null=True, help_text="Mobile phone number")
-    roll_number = models.CharField(max_length=20, blank=True, null=True, help_text="Roll number (optional)")
     room_number = models.CharField(max_length=10, help_text="Room number assignment")
     block = models.CharField(max_length=5, help_text="Hostel block (e.g., A, B, C)")
     phone = models.CharField(max_length=15, blank=True, null=True, help_text="Contact phone number")
