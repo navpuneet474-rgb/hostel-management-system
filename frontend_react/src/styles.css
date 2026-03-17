@@ -1,0 +1,130 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  color: #0f172a;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 20%, #cffafe 0, #f8fafc 45%, #f1f5f9 100%);
+}
+
+.page-shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+}
+
+.auth-screen {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.auth-float {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  animation: auth-float 8s ease-in-out infinite;
+}
+
+.auth-float.delay {
+  animation-delay: 1.2s;
+}
+
+.auth-float.delay-2 {
+  animation-delay: 2.4s;
+}
+
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(5deg);
+  }
+}
+
+.auth-glass-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+  box-shadow: 0 22px 48px rgba(31, 38, 135, 0.25);
+}
+
+.user-type-tile {
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  transition: all 0.24s ease;
+}
+
+.user-type-tile:hover {
+  border-color: #b9c2f7;
+  transform: translateY(-2px);
+}
+
+.user-type-tile.active {
+  border-color: #667eea;
+  background: #eef2ff;
+}
+
+.portal-card {
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.quick-action {
+  border: 1px solid #dbe3f0;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.quick-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.chat-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.14);
+}
+
+.chat-header {
+  background: linear-gradient(90deg, #0f766e, #16a34a);
+  color: #fff;
+}
+
+.msg-user {
+  background: #dcfce7;
+  border-radius: 14px;
+  padding: 10px 12px;
+  max-width: 78%;
+  margin-left: auto;
+}
+
+.msg-ai {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  max-width: 78%;
+}

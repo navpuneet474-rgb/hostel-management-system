@@ -22,6 +22,7 @@ from django.shortcuts import redirect
 from core.views import chat_interface, staff_dashboard, staff_query_interface, pass_history_view, security_dashboard, maintenance_dashboard, active_passes_view
 from core.auth_views import (
     login_view, logout_view, student_dashboard, change_password_view, 
+    csrf_cookie_view,
     profile_view, create_student_account, update_student_profile, update_staff_student_profile,
     require_authentication, require_staff_authentication
 )
@@ -33,6 +34,7 @@ urlpatterns = [
     # Authentication URLs
     path('login/', login_view, name='login'),
     path('auth/login/', login_view, name='auth_login'),
+    path('auth/csrf/', csrf_cookie_view, name='auth_csrf'),
     path('auth/logout/', logout_view, name='logout'),
     path('auth/change-password/', change_password_view, name='change_password'),
     

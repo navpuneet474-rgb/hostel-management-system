@@ -9,6 +9,8 @@ from django.contrib import messages
 from django.contrib.auth import logout as django_logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
 from django.views.decorators.http import require_http_methods
 from django.utils.decorators import method_decorator
 from django.utils import timezone
@@ -25,6 +27,16 @@ from .models import Student, Staff
 from .security import InputValidator, SecurityAuditLogger
 
 logger = logging.getLogger(__name__)
+
+
+@ensure_csrf_cookie
+@require_http_methods(["GET"])
+def csrf_cookie_view(request):
+    """Issue CSRF cookie for SPA clients before state-changing requests."""
+    return JsonResponse({
+        'success': True,
+        'csrfToken': get_token(request)
+    })
 
 
 def login_view(request):
