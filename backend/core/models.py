@@ -91,39 +91,6 @@ class Staff(models.Model):
         return check_password(raw_password, self.password_hash)
 
 
-class Message(models.Model):
-    """Model representing messages sent by students"""
-    MESSAGE_STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('processing', 'Processing'),
-        ('processed', 'Processed'),
-        ('failed', 'Failed'),
-    ]
-    
-    message_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    sender = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='messages')
-    content = models.TextField(help_text="Original message content")
-    status = models.CharField(max_length=20, choices=MESSAGE_STATUS_CHOICES, default='pending')
-    processed = models.BooleanField(default=False, help_text="Whether message has been processed")
-    confidence_score = models.FloatField(
-        null=True, 
-        blank=True,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text="AI confidence score (0.0-1.0)"
-    )
-    extracted_intent = models.JSONField(null=True, blank=True, help_text="Extracted intent and entities")
-    response_sent = models.BooleanField(default=False, help_text="Whether response was sent to student")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'messages'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"Message {self.message_id} from {self.sender.student_id}"
-
-
 class GuestRequest(models.Model):
     """Model representing guest stay requests"""
     STATUS_CHOICES = [

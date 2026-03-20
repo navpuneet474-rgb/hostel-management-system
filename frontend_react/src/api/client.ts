@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_CONFIG } from "../config";
 
 const getCsrfToken = (): string => {
   const token = document.cookie
@@ -10,7 +11,10 @@ const getCsrfToken = (): string => {
 };
 
 export const api = axios.create({
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
   withCredentials: true,
+  headers: API_CONFIG.DEFAULT_HEADERS,
 });
 
 let csrfInitPromise: Promise<void> | null = null;
@@ -18,7 +22,7 @@ let csrfInitPromise: Promise<void> | null = null;
 const ensureCsrfCookie = async (): Promise<void> => {
   if (getCsrfToken()) return;
   if (!csrfInitPromise) {
-    csrfInitPromise = api.get("/auth/csrf/").then(() => undefined).finally(() => {
+    csrfInitPromise = api.get(API_CONFIG.ENDPOINTS.AUTH.CSRF).then(() => undefined).finally(() => {
       csrfInitPromise = null;
     });
   }

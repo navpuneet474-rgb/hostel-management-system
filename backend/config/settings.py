@@ -80,7 +80,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'frontend/templates'],
+        'DIRS': [BASE_DIR / 'frontend_react/dist'],  # Serve built React app
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -105,6 +105,10 @@ DATABASE_URL = os.environ.get('DATABASE_URL') or config('DATABASE_URL', default=
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL)
+    }
+    # Force IPv4 connection for Supabase
+    DATABASES['default']['OPTIONS'] = {
+        'connect_timeout': 10,
     }
 else:
     DATABASES = {
@@ -149,10 +153,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    BASE_DIR / 'frontend/static',
+    BASE_DIR / 'frontend_react/dist/assets',  # Serve built React assets
+    BASE_DIR / 'frontend_react/dist',  # Serve built React root files
 ]
 
 # Media files (User uploads, Generated PDFs)

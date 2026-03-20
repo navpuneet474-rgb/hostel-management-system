@@ -11,7 +11,6 @@ app_name = 'core'
 
 # Create router for ViewSets
 router = DefaultRouter()
-router.register(r'messages', views.MessageViewSet)
 router.register(r'guest-requests', views.GuestRequestViewSet)
 router.register(r'absence-records', views.AbsenceRecordViewSet)
 router.register(r'maintenance-requests', views.MaintenanceRequestViewSet)
@@ -23,12 +22,6 @@ urlpatterns = [
     # Health and system info endpoints
     path('health/', views.health_check, name='health_check'),
     path('info/', views.system_info, name='system_info'),
-    
-    # Staff query endpoint
-    path('staff-query/', views.staff_query, name='staff_query'),
-    
-    # Message management endpoints
-    path('messages/clear/', views.clear_messages, name='clear_messages'),
     
     # Daily summary endpoint
     path('daily-summary/', views.daily_summary, name='daily_summary'),

@@ -19,7 +19,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import redirect
-from core.views import chat_interface, staff_dashboard, staff_query_interface, pass_history_view, security_dashboard, maintenance_dashboard, active_passes_view
+from django.views.generic import TemplateView
+from core.views import staff_dashboard, pass_history_view, security_dashboard, maintenance_dashboard, active_passes_view
 from core.auth_views import (
     login_view, logout_view, student_dashboard, change_password_view, 
     csrf_cookie_view,
@@ -35,17 +36,18 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('auth/login/', login_view, name='auth_login'),
     path('auth/csrf/', csrf_cookie_view, name='auth_csrf'),
+    path('auth/validate-session/', csrf_cookie_view, name='auth_validate_session'),  # Session validation endpoint
+    path('auth/user/', profile_view, name='auth_user'),  # Get current user data endpoint
     path('auth/logout/', logout_view, name='logout'),
     path('auth/change-password/', change_password_view, name='change_password'),
     
-    # Student URLs
-    path('student/dashboard/', require_authentication(student_dashboard), name='student_dashboard'),
+    # Student URLs - Let React handle the dashboard
+    # path('student/dashboard/', require_authentication(student_dashboard), name='student_dashboard'),
     path('student/profile/', require_authentication(profile_view), name='student_profile'),
     path('student/update-profile/', update_student_profile, name='update_student_profile'),
     
     # Staff URLs (Warden/Admin)
     path('staff/', require_staff_authentication(staff_dashboard), name='staff_dashboard'),
-    path('staff/query/', require_staff_authentication(staff_query_interface), name='staff_query_interface'),
     path('staff/pass-history/', require_staff_authentication(pass_history_view), name='pass_history'),
     path('staff/profile/', require_staff_authentication(profile_view), name='staff_profile'),
     path('staff/create-student/', create_student_account, name='create_student_account'),
@@ -60,11 +62,11 @@ urlpatterns = [
     path('maintenance/dashboard/', require_staff_authentication(maintenance_dashboard), name='maintenance_dashboard'),
     path('maintenance/profile/', require_staff_authentication(profile_view), name='maintenance_profile'),
     
-    # Chat interface (requires authentication)
-    path('chat/', require_authentication(chat_interface), name='chat_interface'),
-    
     # Default redirect to login
     path('', login_view, name='home'),
+    
+    # Catch-all pattern for React app (must be last)
+    path('<path:path>', TemplateView.as_view(template_name='index.html'), name='react_app'),
 ]
 
 # Serve media files in development

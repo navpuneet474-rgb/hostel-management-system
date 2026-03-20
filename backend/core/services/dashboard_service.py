@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.core.cache import cache
 from django.db.models import Q, Count, Case, When, IntegerField
-from ..models import Student, GuestRequest, AbsenceRecord, MaintenanceRequest, Message
+from ..models import Student, GuestRequest, AbsenceRecord, MaintenanceRequest
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +133,11 @@ class DashboardService:
             ).count()
             
             # Today's activity
-            todays_messages = Message.objects.filter(
-                created_at__date=today
-            ).count()
+            todays_requests = (
+                GuestRequest.objects.filter(created_at__date=today).count() +
+                AbsenceRecord.objects.filter(created_at__date=today).count() +
+                MaintenanceRequest.objects.filter(created_at__date=today).count()
+            )
             
             todays_requests = (
                 GuestRequest.objects.filter(created_at__date=today).count() +
@@ -163,7 +165,6 @@ class DashboardService:
                 'high_priority_maintenance': high_priority_maintenance,
                 
                 # Today's activity
-                'todays_messages': todays_messages,
                 'todays_requests': todays_requests,
                 
                 # Calculated metrics
@@ -286,14 +287,6 @@ class DashboardService:
                 return cached_activity
         
         try:
-            # Get recent messages with intent information
-            recent_messages = list(Message.objects.filter(
-                status='processed'
-            ).select_related('sender').order_by('-created_at')[:8].values(
-                'id', 'content', 'created_at', 'extracted_intent',
-                'sender__name', 'sender__room_number'
-            ))
-            
             # Get recent maintenance requests
             recent_maintenance = list(MaintenanceRequest.objects.filter(
                 created_at__gte=timezone.now() - timedelta(hours=24)
@@ -322,48 +315,6 @@ class DashboardService:
             
             # Combine and format activity
             activity = []
-            
-            # Helper function to generate crisp message descriptions
-            def get_message_description(intent, sender_name):
-                """Generate descriptive activity text based on message intent."""
-                if not intent:
-                    return f"{sender_name} sent a message"
-                
-                intent_lower = intent.lower()
-                
-                # Map common intents to crisp descriptions
-                intent_map = {
-                    'maintenance': f"{sender_name} requested maintenance",
-                    'guest': f"{sender_name} requested guest permission",
-                    'leave': f"{sender_name} requested leave/absence",
-                    'complaint': f"{sender_name} filed a complaint",
-                    'help': f"{sender_name} requested help",
-                    'complaint_feedback': f"{sender_name} submitted feedback",
-                    'inquiry': f"{sender_name} made an inquiry",
-                    'permission': f"{sender_name} requested permission",
-                    'issue': f"{sender_name} reported an issue",
-                    'problem': f"{sender_name} reported a problem"
-                }
-                
-                # Check for partial matches
-                for key, value in intent_map.items():
-                    if key in intent_lower:
-                        return value
-                
-                # Default fallback
-                return f"{sender_name} sent a message"
-            
-            # Add messages with crisp descriptions
-            for msg in recent_messages:
-                description = get_message_description(msg['extracted_intent'], msg['sender__name'])
-                activity.append({
-                    'type': 'message',
-                    'description': description,
-                    'details': msg['content'][:80] + '...' if len(msg['content']) > 80 else msg['content'],
-                    'timestamp': msg['created_at'],
-                    'student': msg['sender__name'],
-                    'room': msg['sender__room_number']
-                })
             
             # Add maintenance requests
             for maintenance in recent_maintenance:
@@ -442,7 +393,6 @@ class DashboardService:
             todays_guest_requests = GuestRequest.objects.filter(created_at__date=today).count()
             todays_absence_requests = AbsenceRecord.objects.filter(created_at__date=today).count()
             todays_maintenance_requests = MaintenanceRequest.objects.filter(created_at__date=today).count()
-            todays_messages = Message.objects.filter(created_at__date=today).count()
             
             # Approvals today
             todays_approvals = (
@@ -463,7 +413,6 @@ class DashboardService:
                     'guest_requests': todays_guest_requests,
                     'absence_requests': todays_absence_requests,
                     'maintenance_requests': todays_maintenance_requests,
-                    'messages': todays_messages,
                     'approvals': todays_approvals
                 },
                 'pending_items': {
@@ -704,7 +653,6 @@ class DashboardService:
             'pending_absence_requests': 0,
             'pending_maintenance_requests': 0,
             'high_priority_maintenance': 0,
-            'todays_messages': 0,
             'todays_requests': 0,
             'occupancy_rate': 0.0,
             'availability_rate': 0.0,

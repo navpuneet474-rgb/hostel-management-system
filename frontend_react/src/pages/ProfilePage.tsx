@@ -41,7 +41,6 @@ export const ProfilePage = () => {
           <Card style={{ borderRadius: 16 }}>
             <Typography.Title level={5}>Quick Actions</Typography.Title>
             <Space direction="vertical" style={{ width: "100%" }}>
-              <Button block href="/chat">Open AI Assistant</Button>
               <Button block href="/student/dashboard">Go to Dashboard</Button>
               <Button block href="/auth/change-password/" type="primary">Update Password</Button>
             </Space>

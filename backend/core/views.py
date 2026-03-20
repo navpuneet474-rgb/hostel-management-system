@@ -24,13 +24,12 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.decorators import action
 from django.db.models import Q
 
-from .models import Student, Staff, Message, GuestRequest, AbsenceRecord, MaintenanceRequest, AuditLog, DigitalPass, SecurityRecord
+from .models import Student, Staff, GuestRequest, AbsenceRecord, MaintenanceRequest, AuditLog, DigitalPass, SecurityRecord
 from .serializers import (
-    StudentSerializer, StaffSerializer, MessageSerializer, MessageCreateSerializer,
+    StudentSerializer, StaffSerializer,
     GuestRequestSerializer, AbsenceRecordSerializer, MaintenanceRequestSerializer,
-    AuditLogSerializer, MessageProcessingResponseSerializer, HealthCheckSerializer,
-    SystemInfoSerializer, StaffQuerySerializer, StaffQueryResponseSerializer,
-    DailySummarySerializer, RequestApprovalSerializer, ConversationContextSerializer
+    AuditLogSerializer, HealthCheckSerializer,
+    SystemInfoSerializer, RequestApprovalSerializer
 )
 from .authentication import (
     IsStudentOrStaff, IsStaffOnly, IsStudentOnly, HasStaffRole, 
@@ -40,11 +39,7 @@ from .security import (
     InputValidator, DataProtection, SecurityAuditLogger, validate_input
 )
 from .services.dashboard_service import dashboard_service
-from .services.gemini_service import gemini_service
 from .services.supabase_service import supabase_service
-from .services.message_router_service import message_router, ProcessingResult, ProcessingStatus
-from .services.daily_summary_service import daily_summary_generator as daily_summary_service
-from .services.followup_bot_service import followup_bot_service
 from .services.leave_request_service import leave_request_service
 from .authentication import get_authenticated_user
 from .utils import get_or_create_dev_staff, get_staff_from_request_or_dev, build_pass_history_query, format_pass_history_records
@@ -54,316 +49,6 @@ logger = logging.getLogger(__name__)
 # Alias for backward compatibility - use get_authenticated_user directly in new code
 get_user_from_request = get_authenticated_user
     
-@method_decorator(csrf_exempt, name='dispatch')
-class MessageViewSet(ModelViewSet):
-    """ViewSet for managing messages and message processing."""
-    
-    queryset = Message.objects.all().order_by('-created_at')
-    serializer_class = MessageSerializer
-    permission_classes = [AllowAny]  # Allow unauthenticated access for development
-    
-    def get_queryset(self):
-        """Filter queryset based on user type."""
-        if hasattr(self.request.user, 'user_type'):
-            if self.request.user.user_type == 'student':
-                # Students can only see their own messages
-                return self.queryset.filter(sender=self.request.user.user_object)
-            elif self.request.user.user_type == 'staff':
-                # Staff can see all messages
-                return self.queryset
-        logger.warning("No authenticated user - returning all (DEV)")
-        return self.queryset
-    
-    def get_serializer_class(self):
-        """Return appropriate serializer based on action."""
-        if self.action == 'create':
-            return MessageCreateSerializer
-        return MessageSerializer
-    
-    def create(self, request, *args, **kwargs):
-        """Create and process a new message."""
-        try:
-            # Validate input data
-            content = request.data.get('content', '')
-            validated_content = InputValidator.validate_message_content(content)
-            
-            # Log data access event
-            user_id = getattr(request.user, 'user_id', 'anonymous')
-            SecurityAuditLogger.log_data_access_event(
-                user_id=user_id,
-                resource='message',
-                action='create',
-                request=request,
-                details={'content_length': len(validated_content)}
-            )
-            
-        except ValidationError as e:
-            SecurityAuditLogger.log_security_event(
-                event_type='input_validation_error',
-                details={'error': str(e), 'field': 'content'},
-                request=request,
-                severity='WARNING'
-            )
-            return Response({
-                'success': False,
-                'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Create serializer with validated data
-        data = request.data.copy()
-        data['content'] = validated_content
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Get or create sender based on user context
-        sender = None
-        user_context = request.data.get('user_context', {})
-        
-        if hasattr(request.user, 'user_object') and request.user.user_object:
-            # For authenticated users, always use a student instance for messages
-            if isinstance(request.user.user_object, Student):
-                sender = request.user.user_object
-            else:
-                # If it's a staff member, create/get a development student for message storage
-                sender, created = Student.objects.get_or_create(
-                    student_id='STAFF_MSG_001',
-                    defaults={
-                        'name': f"Staff Message ({request.user.user_object.name})",
-                        'room_number': '000',
-                        'block': 'STAFF',
-                        'phone': '0000000000'
-                    }
-                )
-        elif user_context and user_context.get('name') != 'Guest User':
-            # Try to find user based on context
-            user_name = user_context.get('name', '')
-            user_role = user_context.get('role', 'guest')
-            
-            if user_role == 'student':
-                # Try to find student by name or create development student
-                try:
-                    sender = Student.objects.filter(name__icontains=user_name).first()
-                    if not sender:
-                        # Create a development student
-                        sender, created = Student.objects.get_or_create(
-                            student_id=user_context.get('user_id', 'DEV001'),
-                            defaults={
-                                'name': user_name,
-                                'room_number': user_context.get('room_number', '101').split(',')[0].replace('Room ', ''),
-                                'block': 'A',
-                                'phone': '1234567890'
-                            }
-                        )
-                except Exception as e:
-                    logger.warning(f"Could not create/find student from context: {e}")
-                    sender = None
-            elif user_role == 'staff':
-                # For staff messages, create a special student record to store the message
-                try:
-                    sender, created = Student.objects.get_or_create(
-                        student_id=f"STAFF_{user_context.get('user_id', 'STAFF001')}",
-                        defaults={
-                            'name': f"Staff Message ({user_name})",
-                            'room_number': '000',
-                            'block': 'STAFF',
-                            'phone': '0000000000'
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"Could not create staff message record: {e}")
-                    sender = None
-        
-        if not sender:
-            # Fallback to default development student
-            sender, created = Student.objects.get_or_create(
-                student_id='DEV001',
-                defaults={
-                    'name': 'Development Student',
-                    'room_number': '101',
-                    'block': 'A',
-                    'phone': '1234567890'
-                }
-            )
-        
-        # Create the message
-        message = serializer.save(sender=sender, status='pending')
-        
-        try:
-            # Process the message through the router
-            # Pass the actual user context to the router for proper handling
-            actual_user_context = user_context if user_context else {}
-            
-            # If this is a staff message, route it as a staff query
-            if user_context and user_context.get('role') == 'staff':
-                # Handle as staff query
-                staff_member, created = Staff.objects.get_or_create(
-                    staff_id=user_context.get('user_id', 'STAFF001'),
-                    defaults={
-                        'name': user_context.get('name', 'Staff Member'),
-                        'role': 'warden',
-                        'email': f"{user_context.get('user_id', 'staff')}@hostel.edu",
-                        'phone': '9876543210'
-                    }
-                )
-                
-                # Process as staff query
-                query_result = message_router.handle_staff_query(validated_content, staff_member)
-                
-                # Convert staff query result to message processing result format
-                processing_result = ProcessingResult(
-                    status=ProcessingStatus.SUCCESS if query_result['status'] == 'success' else ProcessingStatus.FAILED,
-                    response_message=query_result['response'],
-                    confidence=1.0,
-                    intent_result=None,
-                    approval_result=None,
-                    conversation_context=None,
-                    requires_follow_up=False,
-                    metadata=query_result.get('metadata', {})
-                )
-            else:
-                # Handle as regular student message
-                processing_result = message_router.route_message(message)
-            
-            # Sanitize response data for logging
-            sanitized_metadata = DataProtection.sanitize_for_logging(processing_result.metadata)
-            
-            # Prepare response
-            response_data = {
-                'success': True,
-                'message_id': str(message.message_id),
-                'ai_response': processing_result.response_message,
-                'status': processing_result.status.value,
-                'confidence': processing_result.confidence,
-                'needs_clarification': processing_result.requires_follow_up,
-                'clarification_question': processing_result.response_message if processing_result.requires_follow_up else None,
-                'conversation_id': f"conv_{sender.student_id}_{timezone.now().strftime('%Y%m%d')}",
-                'metadata': sanitized_metadata
-            }
-            
-            # Log successful processing
-            SecurityAuditLogger.log_data_access_event(
-                user_id=sender.student_id,
-                resource='message',
-                action='process_success',
-                request=request,
-                details={'message_id': str(message.message_id), 'status': processing_result.status.value}
-            )
-            
-            return Response(response_data, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            logger.error(f"Error processing message {message.message_id}: {e}")
-            message.status = 'failed'
-            message.save()
-            
-            # Log processing error
-            SecurityAuditLogger.log_security_event(
-                event_type='message_processing_error',
-                details={'message_id': str(message.message_id), 'error': str(e)},
-                request=request,
-                severity='ERROR'
-            )
-            
-            return Response({
-                'success': False,
-                'message_id': str(message.message_id),
-                'error': 'Failed to process message',
-                'details': str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=['get'])
-    def by_student(self, request):
-        """Get messages for a specific student."""
-        student_id = request.query_params.get('student_id')
-        if not student_id:
-            return Response({'error': 'student_id parameter required'}, 
-                          status=status.HTTP_400_BAD_REQUEST)
-        
-        messages = self.queryset.filter(sender__student_id=student_id)
-        serializer = self.get_serializer(messages, many=True)
-        return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def recent(self, request):
-        """Get recent messages (last 24 hours)."""
-        # Get messages for the current user
-        if not hasattr(request.user, 'user_object') or not request.user.user_object:
-            return Response({'results': []})
-        
-        sender = request.user.user_object
-        
-        since = timezone.now() - timezone.timedelta(hours=24)
-        messages = self.queryset.filter(sender=sender, created_at__gte=since)
-        serializer = self.get_serializer(messages, many=True)
-        return Response({'results': serializer.data})
-    
-    @action(detail=False, methods=['post'])
-    def upload(self, request):
-        """Handle file uploads for chat interface."""
-        try:
-            if 'file' not in request.FILES:
-                return Response({
-                    'success': False,
-                    'error': 'No file provided'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            uploaded_file = request.FILES['file']
-            file_type = request.data.get('type', 'document')
-            
-            # Validate file size (max 10MB)
-            if uploaded_file.size > 10 * 1024 * 1024:
-                return Response({
-                    'success': False,
-                    'error': 'File size must be less than 10MB'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Validate file type
-            allowed_types = {
-                'image': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
-                'document': ['.pdf', '.doc', '.docx', '.txt', '.csv', '.xlsx']
-            }
-            
-            file_extension = uploaded_file.name.lower().split('.')[-1]
-            if f'.{file_extension}' not in allowed_types.get(file_type, []):
-                return Response({
-                    'success': False,
-                    'error': f'File type not allowed for {file_type}'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Save file (in production, you'd want to use cloud storage)
-            import os
-            from django.conf import settings
-            
-            upload_dir = os.path.join(settings.MEDIA_ROOT, 'chat_uploads')
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            # Generate unique filename
-            import uuid
-            unique_filename = f"{uuid.uuid4()}_{uploaded_file.name}"
-            file_path = os.path.join(upload_dir, unique_filename)
-            
-            with open(file_path, 'wb+') as destination:
-                for chunk in uploaded_file.chunks():
-                    destination.write(chunk)
-            
-            # Generate URL for the file
-            file_url = f"{settings.MEDIA_URL}chat_uploads/{unique_filename}"
-            
-            return Response({
-                'success': True,
-                'url': file_url,
-                'filename': uploaded_file.name,
-                'size': uploaded_file.size,
-                'type': file_type
-            })
-            
-        except Exception as e:
-            logger.error(f"File upload error: {e}")
-            return Response({
-                'success': False,
-                'error': 'Upload failed'
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class GuestRequestViewSet(ModelViewSet):
     """ViewSet for managing guest requests."""
@@ -714,83 +399,6 @@ class AuditLogViewSet(ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])  # Allow for development
-def staff_query(request):
-    """Process natural language queries from staff."""
-    try:
-        # Validate input
-        query = request.data.get('query', '')
-        validated_query = InputValidator.validate_query_content(query)
-        
-        # Log staff query access
-        user_id = getattr(request.user, 'user_id', 'unknown')
-        SecurityAuditLogger.log_data_access_event(
-            user_id=user_id,
-            resource='staff_query',
-            action='execute',
-            request=request,
-            details={'query_length': len(validated_query)}
-        )
-        
-    except ValidationError as e:
-        SecurityAuditLogger.log_security_event(
-            event_type='input_validation_error',
-            details={'error': str(e), 'field': 'query'},
-            request=request,
-            severity='WARNING'
-        )
-        return Response({
-            'success': False,
-            'error': str(e)
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        # Get or create default staff for development
-        staff_member = get_staff_from_request_or_dev(request)
-        
-        # Process the query through the message router
-        query_result = message_router.handle_staff_query(validated_query, staff_member)
-        
-        # Sanitize response data
-        sanitized_results = query_result.get('results', [])
-        sanitized_metadata = query_result.get('metadata', {})
-        
-        # Only sanitize if they are dictionaries
-        if isinstance(sanitized_results, dict):
-            sanitized_results = DataProtection.sanitize_for_logging(sanitized_results)
-        if isinstance(sanitized_metadata, dict):
-            sanitized_metadata = DataProtection.sanitize_for_logging(sanitized_metadata)
-        
-        response_data = {
-            'success': query_result['status'] == 'success',
-            'query': validated_query,
-            'response': query_result['response'],
-            'query_type': query_result['query_type'],
-            'results': sanitized_results,
-            'metadata': sanitized_metadata
-        }
-        
-        return Response(response_data, status=status.HTTP_200_OK)
-        
-    except Exception as e:
-        logger.error(f"Error processing staff query: {e}")
-        
-        # Log query processing error
-        SecurityAuditLogger.log_security_event(
-            event_type='staff_query_error',
-            details={'error': str(e), 'user_id': user_id},
-            request=request,
-            severity='ERROR'
-        )
-        
-        return Response({
-            'success': False,
-            'error': 'Failed to process query',
-            'details': str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 @api_view(['GET'])
 @permission_classes([IsStaffOnly])
 def daily_summary(request):
@@ -873,10 +481,7 @@ def health_check(request):
             "services": {
                 "django": "healthy",
                 "supabase": "healthy" if supabase_service.is_configured() else "not_configured",
-                "gemini_ai": "healthy" if gemini_service.is_configured() else "not_configured",
-                "message_router": "healthy",
-                "followup_bot": "healthy",
-                "daily_summary": "healthy"
+                "dashboard": "healthy"
             },
             "version": "1.0.0"
         }
@@ -1799,65 +1404,6 @@ def get_recent_verifications(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow for development
-def clear_messages(request):
-    """Clear chat messages for a user."""
-    try:
-        user_id = request.data.get('user_id')
-        
-        if not user_id:
-            return Response({
-                'success': False,
-                'error': 'user_id is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Find messages for this user
-        # For development, we'll clear messages based on user context
-        messages_deleted = 0
-        
-        # Try to find student by user_id or name
-        try:
-            # First try to find by student_id
-            student = Student.objects.filter(student_id=user_id).first()
-            if not student:
-                # Try to find by name (for development users)
-                student = Student.objects.filter(name__icontains=user_id.replace('-', ' ')).first()
-            
-            if student:
-                # Delete messages for this student
-                messages_to_delete = Message.objects.filter(sender=student)
-                messages_deleted = messages_to_delete.count()
-                messages_to_delete.delete()
-                
-                logger.info(f"Cleared {messages_deleted} messages for user {user_id}")
-            
-        except Exception as e:
-            logger.warning(f"Could not find specific user {user_id}, clearing anyway: {e}")
-        
-        # Log the clear action
-        SecurityAuditLogger.log_data_access_event(
-            user_id=user_id,
-            resource='messages',
-            action='clear_chat',
-            request=request,
-            details={'messages_deleted': messages_deleted}
-        )
-        
-        return Response({
-            'success': True,
-            'message': f'Chat cleared successfully ({messages_deleted} messages deleted)',
-            'messages_deleted': messages_deleted
-        })
-        
-    except Exception as e:
-        logger.error(f"Error clearing messages: {e}")
-        return Response({
-            'success': False,
-            'error': 'Failed to clear messages'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])  # Allow for development
 def bulk_verify_passes(request):
     """Bulk verify multiple passes at once."""
     try:
@@ -2187,71 +1733,6 @@ def system_info(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def chat_interface(request):
-    """
-    Render the chat interface template.
-    Provides a WhatsApp-like chat experience for students and staff.
-    """
-    # Get user context for template
-    user_context = {}
-    
-    # Get user information from session
-    user_id = request.session.get('user_id')
-    user_type = request.session.get('user_type')
-    
-    if user_id and user_type:
-        if user_type == 'student':
-            try:
-                student = Student.objects.get(student_id=user_id)
-                user_context = {
-                    'name': student.name,
-                    'room_number': student.room_number,
-                    'block': student.block,
-                    'email': student.email,
-                    'user_type': 'student'
-                }
-            except Student.DoesNotExist:
-                user_context = {
-                    'name': 'Student',
-                    'room_number': '',
-                    'block': '',
-                    'email': '',
-                    'user_type': 'student'
-                }
-        elif user_type in ['staff', 'warden']:
-            try:
-                staff = Staff.objects.get(staff_id=user_id)
-                user_context = {
-                    'name': staff.name,
-                    'designation': staff.role.title(),
-                    'email': staff.email,
-                    'user_type': user_type
-                }
-            except Staff.DoesNotExist:
-                user_context = {
-                    'name': 'Staff Member',
-                    'designation': 'Staff',
-                    'email': '',
-                    'user_type': user_type
-                }
-    else:
-        # For development/testing - try to get from session or create test user
-        session_user = request.session.get('test_user')
-        if session_user:
-            user_context = session_user
-        else:
-            # Create a test student context for development
-            user_context = {
-                'name': 'Test Student',
-                'room_number': '101',
-                'block': 'A',
-                'email': 'test@example.com',
-                'user_type': 'student'
-            }
-    
-    return render(request, 'chat/index.html', {'user': user_context})
-
-
 @api_view(['GET'])
 @permission_classes([IsStaffOnly])
 def get_pass_history(request):
@@ -2386,7 +1867,6 @@ def staff_dashboard(request):
         pending_maintenance_requests = MaintenanceRequest.objects.filter(status='pending').order_by('-created_at')[:10]
         
         # Recent activity
-        recent_messages = Message.objects.filter(status='processed').order_by('-created_at')[:5]
         recent_audit_logs = AuditLog.objects.order_by('-timestamp')[:10]
         
         # Statistics
@@ -2601,21 +2081,6 @@ def maintenance_dashboard(request):
     }
     
     return render(request, 'maintenance/dashboard.html', context)
-
-
-def staff_query_interface(request):
-    """
-    Render the staff query interface for natural language queries.
-    Provides a dedicated interface for staff to ask questions about hostel data.
-    """
-    # Get staff member from request or use dev staff
-    staff_member = get_staff_from_request_or_dev(request)
-    
-    context = {
-        'staff': staff_member,
-    }
-    
-    return render(request, 'staff/query_interface.html', context)
 
 
 @api_view(['POST'])

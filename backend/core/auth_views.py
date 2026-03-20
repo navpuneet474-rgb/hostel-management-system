@@ -39,6 +39,7 @@ def csrf_cookie_view(request):
     })
 
 
+@csrf_exempt
 def login_view(request):
     """
     Dual role login view for both students and staff.
@@ -49,7 +50,7 @@ def login_view(request):
         if hasattr(request, 'session') and request.session.get('user_id'):
             user_type = request.session.get('user_type')
             if user_type == 'student':
-                return redirect('student_dashboard')
+                return redirect('/student/dashboard')  # Let React handle this route
             elif user_type == 'staff':
                 return redirect('staff_dashboard')
         
@@ -107,6 +108,10 @@ def handle_login(request):
         )
         
         # Authenticate based on user type
+        # Map all staff roles to 'staff' for authentication
+        staff_roles = ['staff', 'warden', 'security', 'maintenance', 'admin']
+        is_staff_login = user_type in staff_roles
+
         user_object = None
         if user_type == 'student':
             try:
@@ -124,12 +129,18 @@ def handle_login(request):
                     'success': False,
                     'error': 'Invalid email or password'
                 }, status=401)
-        
-        elif user_type == 'staff':
+
+        elif is_staff_login:
             try:
                 user_object = Staff.objects.get(email=email, is_active=True)
                 if not user_object.check_password(password):
                     raise Staff.DoesNotExist()
+
+                # Verify that the staff member's role matches the requested login type
+                # (unless logging in as generic 'staff')
+                if user_type != 'staff' and user_object.role != user_type:
+                    raise Staff.DoesNotExist()
+
             except Staff.DoesNotExist:
                 SecurityAuditLogger.log_security_event(
                     event_type='login_failed',
@@ -141,7 +152,7 @@ def handle_login(request):
                     'success': False,
                     'error': 'Invalid email or password'
                 }, status=401)
-        
+
         else:
             return JsonResponse({
                 'success': False,
@@ -150,7 +161,8 @@ def handle_login(request):
         
         # Create session
         request.session['user_id'] = user_object.student_id if user_type == 'student' else user_object.staff_id
-        request.session['user_type'] = user_type
+        request.session['user_type'] = user_type if user_type == 'student' else 'staff'
+        request.session['user_role'] = user_object.role if is_staff_login else None
         request.session['user_email'] = email
         request.session['login_time'] = timezone.now().isoformat()
         
@@ -158,13 +170,19 @@ def handle_login(request):
         is_first_login = False
         if user_type == 'student' and user_object.is_first_login:
             is_first_login = True
-        
+
+        # Determine actual user type for logging and response
+        # For staff, use their specific role
+        actual_user_type = user_type
+        if is_staff_login:
+            actual_user_type = user_object.role if hasattr(user_object, 'role') else 'staff'
+
         # Log successful login
         SecurityAuditLogger.log_security_event(
             event_type='login_success',
             details={
-                'email': email, 
-                'user_type': user_type, 
+                'email': email,
+                'user_type': actual_user_type,
                 'user_id': user_object.student_id if user_type == 'student' else user_object.staff_id,
                 'is_first_login': is_first_login
             },
@@ -174,22 +192,26 @@ def handle_login(request):
         
         # Determine redirect URL based on user type and role
         if user_type == 'student':
-            redirect_url = '/student/dashboard/'
+            redirect_url = '/student/dashboard/'  # React will handle this
         else:
             # Route staff based on their role
-            staff_role = user_object.role if hasattr(user_object, 'role') else 'staff'
+            staff_role = actual_user_type
             if staff_role == 'security':
                 redirect_url = '/security/dashboard/'
             elif staff_role == 'maintenance':
                 redirect_url = '/maintenance/dashboard/'
+            elif staff_role == 'warden':
+                redirect_url = '/warden/dashboard/'
+            elif staff_role == 'admin':
+                redirect_url = '/admin/dashboard/'
             else:
-                # warden, admin, or other staff roles go to staff dashboard
+                # other staff roles go to staff dashboard
                 redirect_url = '/staff/'
-        
+
         return JsonResponse({
             'success': True,
             'message': 'Login successful',
-            'user_type': user_type,
+            'user_type': actual_user_type,
             'is_first_login': is_first_login,
             'redirect_url': redirect_url,
             'user': {
@@ -266,7 +288,52 @@ def student_dashboard(request):
             'recent_maintenance_requests': recent_maintenance_requests,
         }
         
-        return render(request, 'student/dashboard.html', context)
+        # Return JSON response for React frontend
+        from django.http import JsonResponse
+        return JsonResponse({
+            'student': {
+                'student_id': student.student_id,
+                'name': student.name,
+                'email': student.email,
+                'room_number': student.room_number,
+                'phone_number': student.phone_number,
+            },
+            'recent_messages': [
+                {
+                    'id': msg.id,
+                    'content': msg.content,
+                    'created_at': msg.created_at.isoformat(),
+                    'sender': msg.sender.name if msg.sender else 'System'
+                } for msg in recent_messages
+            ],
+            'recent_guest_requests': [
+                {
+                    'id': req.id,
+                    'visitor_name': req.visitor_name,
+                    'purpose': req.purpose,
+                    'created_at': req.created_at.isoformat(),
+                    'status': req.status
+                } for req in recent_guest_requests
+            ],
+            'recent_absence_records': [
+                {
+                    'id': record.id,
+                    'reason': record.reason,
+                    'start_date': record.start_date.isoformat(),
+                    'end_date': record.end_date.isoformat() if record.end_date else None,
+                    'status': record.status
+                } for record in recent_absence_records
+            ],
+            'recent_maintenance_requests': [
+                {
+                    'id': req.id,
+                    'issue_type': req.issue_type,
+                    'description': req.description,
+                    'created_at': req.created_at.isoformat(),
+                    'status': req.status
+                } for req in recent_maintenance_requests
+            ]
+        })
         
     except Student.DoesNotExist:
         messages.error(request, 'Student account not found.')
@@ -395,7 +462,7 @@ def handle_password_change(request):
         
         # Determine redirect URL based on user type and role
         if user_type == 'student':
-            password_redirect_url = '/student/dashboard/'
+            password_redirect_url = '/student/dashboard/'  # React will handle this
         else:
             staff_role = user_object.role if hasattr(user_object, 'role') else 'staff'
             if staff_role == 'security':
